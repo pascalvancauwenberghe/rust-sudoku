@@ -17,7 +17,8 @@ fn test_can_solve_easy_sudoku() {
 951743628
 519326874
 248957136
-763418259"#;
+763418259
+"#;
 
     let game = Game::new("easy", easy_sudoku());
     assert_eq!(solution, game.to_string());
