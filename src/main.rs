@@ -1,3 +1,6 @@
+mod sudoku;
+
 fn main() {
-    println!("Hello, world!");
+    let game = sudoku::Game::new("easiest", "");
+    println!("{:#?}", game);
 }
