@@ -1,17 +1,26 @@
 use std::fmt;
+use crate::square_value::SquareValue;
+
 
 #[derive(Debug)]
 pub struct Game {
     pub name: String,
-    values: [u32; 81],
+    values: [SquareValue; 81],
 }
 
 impl Game {
     pub fn new(game_name: &str, initial: &'static str) -> Self {
-        Self {
+        let mut result = Self {
             name: game_name.to_string(),
-            values: parse_initial_sudoku_values(initial),
+            values: [SquareValue::new(); 81],
+        };
+        let parsed = parse_initial_sudoku_values(initial);
+        for pos in 0..81 {
+            if parsed[pos] != 0 {
+                result.values[pos].set_known_value(parsed[pos]);
+            }
         }
+        result
     }
 }
 
@@ -22,11 +31,11 @@ impl fmt::Display for Game {
         output += "\n";
         for row in 1..=9 {
             for col in 1..=9 {
-                let value = self.values[(row - 1) * 9 + (col - 1)];
-                if value == 0 {
+                let value = &self.values[(row - 1) * 9 + (col - 1)];
+                if !value.has_known_value() {
                     output.push('.');
                 } else {
-                    output.push_str(&value.to_string());
+                    output.push_str(&value.value().to_string());
                 }
             }
             output += "\n";
@@ -39,9 +48,9 @@ impl fmt::Display for Game {
 // Digit => value of the digit 1..9
 // '.'   => 0
 // values are arranged row per row
-fn parse_initial_sudoku_values(values: &str) -> [u32; 81] {
+fn parse_initial_sudoku_values(values: &str) -> [usize; 81] {
     let lines = values.lines();
-    let mut result = [0; 81];
+    let mut result: [usize; 81] = [0; 81];
     let mut row = 0;
     for line in lines {
         if line.len() >= 9 {
@@ -49,7 +58,7 @@ fn parse_initial_sudoku_values(values: &str) -> [u32; 81] {
             for col in 1..=9 {
                 let kar = line.chars().nth(col - 1).unwrap();
                 if ('1'..='9').contains(&kar) {
-                    result[(row - 1) * 9 + (col - 1)] = kar.to_digit(10).unwrap();
+                    result[(row - 1) * 9 + (col - 1)] = kar.to_digit(10).unwrap() as usize;
                 }
             }
         }
