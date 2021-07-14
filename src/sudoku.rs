@@ -1,5 +1,6 @@
 use std::fmt;
 
+
 #[derive(Debug)]
 pub struct Game {
     pub name: String,
@@ -23,10 +24,11 @@ impl fmt::Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::games::*;
 
     #[test]
     fn test_create_game_with_name() {
-        let game = Game::new("easy", "");
+        let game = Game::new("easy", easy_sudoku());
         assert_eq!("easy", game.name);
     }
 }
