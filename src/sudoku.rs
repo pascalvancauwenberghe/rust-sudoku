@@ -22,6 +22,10 @@ impl Game {
         }
         result
     }
+
+    fn position_of(row: usize, col: usize) -> usize {
+        (row - 1) * 9 + (col - 1)
+    }
 }
 
 // Default toString implementation. Does nothing now, will print current value of game, solution if found one
@@ -31,7 +35,7 @@ impl fmt::Display for Game {
         output += "\n";
         for row in 1..=9 {
             for col in 1..=9 {
-                let value = &self.values[(row - 1) * 9 + (col - 1)];
+                let value = &self.values[Game::position_of(row, col)];
                 if !value.has_known_value() {
                     output.push('.');
                 } else {
@@ -43,6 +47,7 @@ impl fmt::Display for Game {
         write!(f, "{}", output)
     }
 }
+
 
 // Parses a multi-line string with the starting values of the Sudoku
 // Digit => value of the digit 1..9
@@ -58,7 +63,7 @@ fn parse_initial_sudoku_values(values: &str) -> [usize; 81] {
             for col in 1..=9 {
                 let kar = line.chars().nth(col - 1).unwrap();
                 if ('1'..='9').contains(&kar) {
-                    result[(row - 1) * 9 + (col - 1)] = kar.to_digit(10).unwrap() as usize;
+                    result[Game::position_of(row, col)] = kar.to_digit(10).unwrap() as usize;
                 }
             }
         }
@@ -151,3 +156,4 @@ mod tests {
         assert_eq!(easy_sudoku(), game.to_string());
     }
 }
+
