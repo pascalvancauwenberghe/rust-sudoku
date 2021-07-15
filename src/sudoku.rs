@@ -1,6 +1,5 @@
-use std::fmt;
 use crate::square_value::SquareValue;
-
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Game {
@@ -14,10 +13,15 @@ impl Game {
             name: game_name.to_string(),
             values: [SquareValue::new(); 81],
         };
+        for row in 1..=9 {
+            for col in 1..=9 {
+                result.values[Game::position_of(row, col)].at(row, col);
+            }
+        }
         let parsed = parse_initial_sudoku_values(initial);
-        for pos in 0..81 {
-            if parsed[pos] != 0 {
-                result.values[pos].set_known_value(parsed[pos]);
+        for (pos, parsed_value) in parsed.iter().enumerate() {
+            if *parsed_value != 0 {
+                result.values[pos].set_known_value(*parsed_value);
             }
         }
         result
@@ -25,6 +29,60 @@ impl Game {
 
     fn position_of(row: usize, col: usize) -> usize {
         (row - 1) * 9 + (col - 1)
+    }
+
+    pub fn solve(&mut self) {
+        // The first technique is to start with known values and remove those values from the possible
+        //  values in the squares in the same row, column and subgrid, to maintain the "distinct" constraint
+        // Initially we know the given values. Removing possibilities may lead us to discover a new value,
+        // which can then be used to remove more values. Etc.
+        // So we keep propagating until we run of values to propagate
+        // This is enough to solve really simple Sudokus
+
+        while !self.solved() {
+            if !self.propagate_known_values() {
+                return;
+            }
+        }
+    }
+
+    pub fn possibilities(&self) -> usize {
+        self.values.iter().map(|c| c.possibilities()).sum()
+    }
+
+    pub fn solved(&self) -> bool {
+        self.possibilities() == 81
+    }
+
+    fn propagate_known_values(&mut self) -> bool {
+        let square = self.find_cell_to_propagate();
+        if let Some(value) = square {
+            self.propagate_known_values_in_column(&value);
+            self.propagate_known_values_in_row(&value);
+            self.values[Game::position_of(value.row, value.col)].has_been_propagated();
+            return true;
+        }
+        false
+    }
+
+    fn propagate_known_values_in_column(&mut self, square: &SquareValue) {
+        for row in 1..=9 {
+            if row != square.row {
+                self.values[Game::position_of(row, square.col)].cant_have_value(square.value());
+            }
+        }
+    }
+
+    fn propagate_known_values_in_row(&mut self, square: &SquareValue) {
+        for col in 1..=9 {
+            if col != square.col {
+                self.values[Game::position_of(square.row, col)].cant_have_value(square.value());
+            }
+        }
+    }
+
+    fn find_cell_to_propagate(&self) -> Option<SquareValue> {
+        self.values.iter().find(|v| v.needs_to_be_propagated()).cloned()
     }
 }
 
@@ -47,7 +105,6 @@ impl fmt::Display for Game {
         write!(f, "{}", output)
     }
 }
-
 
 // Parses a multi-line string with the starting values of the Sudoku
 // Digit => value of the digit 1..9
@@ -155,5 +212,19 @@ mod tests {
         let game = Game::new("easy", easy_sudoku());
         assert_eq!(easy_sudoku(), game.to_string());
     }
-}
 
+    #[test]
+    fn test_game_propagates_known_values() {
+        let mut game = Game::new("easy", easy_sudoku());
+        game.solve();
+        for col in 1..9 {
+            let cell = game.values[Game::position_of(1, col)];
+            if !cell.has_known_value() {
+                assert_eq!(9 - 4, cell.possibilities()); // 4 cells are known
+            }
+        }
+        assert!(game.solved());
+        assert_eq!(81, game.possibilities());
+        assert_eq!(easy_sudoku_solution(), game.to_string());
+    }
+}

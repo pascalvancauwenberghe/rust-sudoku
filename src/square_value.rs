@@ -7,6 +7,9 @@ use std::ops::RangeInclusive;
 #[derive(Debug, Copy, Clone)]
 pub struct SquareValue {
     possible_values: [bool; 9],
+    pub row: usize,
+    pub col: usize,
+    propagated: bool,
 }
 
 impl SquareValue {
@@ -14,6 +17,9 @@ impl SquareValue {
         Self {
             // By default, every value is possible
             possible_values: [true; 9],
+            row: 0,
+            col: 0,
+            propagated: false,
         }
     }
 
@@ -24,13 +30,22 @@ impl SquareValue {
         value - 1
     }
 
+    pub fn at(&mut self, row: usize, col: usize) {
+        self.row = row;
+        self.col = col;
+    }
+
     // Returns true if only one of the 9 possibilities is available
-    pub fn has_known_value(self: &Self) -> bool {
-        self.possible_values.iter().filter(|v| **v).count() == 1
+    pub fn has_known_value(&self) -> bool {
+        self.possibilities() == 1
+    }
+
+    pub fn possibilities(&self) -> usize {
+        self.possible_values.iter().filter(|v| **v).count()
     }
 
     // Set the possibilities so that only the given value is possible. Sets the initial given values
-    pub fn set_known_value(self: &mut Self, value: usize) {
+    pub fn set_known_value(&mut self, value: usize) {
         for v in SquareValue::ALL_VALUES {
             self.possible_values[SquareValue::position_of_value(v)] = false;
         }
@@ -39,7 +54,7 @@ impl SquareValue {
 
     // Return the number contained in the value
     // If more than one value is still possible (!has_known_value), returns the lowest possible value
-    pub fn value(self: &Self) -> usize {
+    pub fn value(&self) -> usize {
         for v in SquareValue::ALL_VALUES {
             if self.possible_values[SquareValue::position_of_value(v)] {
                 return v;
@@ -47,11 +62,40 @@ impl SquareValue {
         }
         0
     }
+
+    // Remove possible value because another square in the same row/column/subgrid already has the value to maintain distinct constraint
+    pub fn cant_have_value(&mut self, value: usize) {
+        self.possible_values[SquareValue::position_of_value(value)] = false;
+    }
+
+    // Known values must be "propagated": the squares's value must be removed from the possibilities of squares that have a "distinct" relation with it
+    // We keep track of which squares have been propagated
+    pub fn needs_to_be_propagated(&self) -> bool {
+        !self.propagated && self.has_known_value()
+    }
+
+    pub fn has_been_propagated(&mut self) {
+        self.propagated = true;
+    }
+}
+
+impl Default for SquareValue {
+    fn default() -> Self {
+        SquareValue::new()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_square_has_a_position_in_grid() {
+        let mut value = SquareValue::new();
+        value.at(4, 7);
+        assert_eq!(4, value.row);
+        assert_eq!(7, value.col);
+    }
 
     #[test]
     fn test_create_default_values() {
@@ -66,5 +110,36 @@ mod tests {
 
             assert_eq!(v, value.value());
         }
+    }
+
+    #[test]
+    fn test_propagating_known_values() {
+        let mut value = SquareValue::new();
+
+        assert_eq!(false, value.needs_to_be_propagated());
+
+        value.set_known_value(5);
+        assert_eq!(true, value.needs_to_be_propagated());
+
+        value.has_been_propagated();
+        assert_eq!(false, value.needs_to_be_propagated());
+    }
+
+    #[test]
+    fn test_reducing_possibilities_due_to_constraints() {
+        let mut value = SquareValue::new();
+
+        assert!(!value.has_known_value());
+        value.cant_have_value(5);
+        assert!(!value.has_known_value());
+
+        for v in 1..=9 {
+            if v != 7 {
+                value.cant_have_value(v);
+            }
+        }
+
+        assert!(value.has_known_value());
+        assert_eq!(7, value.value());
     }
 }

@@ -1,5 +1,5 @@
-use rust_sudoku::sudoku::Game;
 use rust_sudoku::games::*;
+use rust_sudoku::sudoku::Game;
 
 // Acceptance tests with increasingly difficult Sudokus to solve
 // For now, the test will fail because the game doesn't do anything, but it gives us a a goal to works towards.
@@ -8,18 +8,7 @@ use rust_sudoku::games::*;
 
 #[test]
 fn test_can_solve_easy_sudoku() {
-    let solution = r#"
-435269781
-682571493
-197834562
-826195347
-374682915
-951743628
-519326874
-248957136
-763418259
-"#;
-
-    let game = Game::new("easy", easy_sudoku());
-    assert_eq!(solution, game.to_string());
+    let mut game = Game::new("easy", easy_sudoku());
+    game.solve();
+    assert_eq!(easy_sudoku_solution(), game.to_string());
 }

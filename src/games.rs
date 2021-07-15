@@ -1,5 +1,4 @@
-pub fn easy_sudoku() -> &'static str
-{
+pub fn easy_sudoku() -> &'static str {
     r#"
 ...26.7.1
 68..7..9.
@@ -10,5 +9,19 @@ pub fn easy_sudoku() -> &'static str
 ..93...74
 .4..5..36
 7.3.18...
+"#
+}
+
+pub fn easy_sudoku_solution() -> &'static str {
+    r#"
+435269781
+682571493
+197834562
+826195347
+374682915
+951743628
+519326874
+248957136
+763418259
 "#
 }
