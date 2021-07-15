@@ -94,7 +94,7 @@ impl Game {
             // heuristic guess squares with the least number of possibilities, so as to maximuize odds of guessing right
             let candidate = self.find_cell_to_guess();
             if let Some(square) = candidate {
-                for v in (1..=9).rev() {
+                for v in 1..=9 {
                     if square.is_possibly(v) {
                         if DEBUG {
                             println!("Guessing that square ({},{}) has value {}", square.row, square.col, v);

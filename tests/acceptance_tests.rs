@@ -23,3 +23,10 @@ fn test_can_solve_intermediate_sudoku() {
     game.solve();
     assert_eq!(intermediate_sudoku1_solution(), game.to_string());
 }
+
+#[test]
+fn test_can_solve_difficult_sudoku() {
+    let mut game = Game::new("difficult", difficult_sudoku1());
+    game.solve();
+    assert_eq!(difficult_sudoku1_solution(), game.to_string());
+}

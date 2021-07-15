@@ -6,6 +6,7 @@ fn main() {
     solve("easiest 1", games::easy_sudoku());
     solve("easiest 2", games::easy_sudoku2());
     solve("intermediate", games::intermediate_sudoku1());
+    solve("difficult", games::difficult_sudoku1());
 }
 
 fn solve(name: &str, initial_values: &'static str) {
@@ -16,6 +17,6 @@ fn solve(name: &str, initial_values: &'static str) {
     if game.solved() {
         println!("Solution for game '{}' in {} ms:{}", game.name, elapsed, game);
     } else {
-        println!("No solution for game '{}' in {} ms. Score = {} :{:?}", game.name, elapsed,game.possibilities(), game);
+        println!("No solution for game '{}' in {} ms. Score = {} :{:?}", game.name, elapsed, game.possibilities(), game);
     }
 }
