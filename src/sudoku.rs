@@ -105,19 +105,7 @@ impl Game {
         result
     }
 
-    // The first technique is to start with known values and remove those values from the possible
-    //  values in the squares in the same row, column and subgrid, to maintain the "distinct" constraint
-    // Initially we know the given values. Removing possibilities may lead us to discover a new value,
-    // which can then be used to remove more values. Etc.
-    // So we keep propagating until we run of values to propagate
-    // This is enough to solve really simple Sudokus
-    // Example: [ 1 2 3 4 ] [ 4 ] [ 1 2 3 4 ] => [ 1 2 3 ] [ 4 ] [ 1 2 3 ]
-
-    // The second technique spots "singletons" in row/column/subgrid
-    // A "singleton" is a square that contains multiple possibilities but is the only one to have a certain value as possibility
-    // We can conclude from this that the square must have that "singleton" value, as all values must be used
-    // Example: [ 1 2 ] [ 1 2 3] [ 1 2 ] => [ 1 2 ] [ 3 ] [ 1 2 ]
-    pub fn solve(&mut self) -> &Self {
+    pub fn solve(&mut self) {
         if DEBUG {
             println!("Solving {:?}", self);
         }
@@ -129,7 +117,7 @@ impl Game {
                     println!("After propagating known values {:?}", self);
                 }
                 if self.contains_contradiction() || self.solved() {
-                    return self;
+                    return;
                 }
                 progress_made = self.promote_singletons();
                 if progress_made {
@@ -137,7 +125,7 @@ impl Game {
                         println!("After promoting singeletons {:?}", self);
                     }
                     if self.contains_contradiction() || self.solved() {
-                        return self;
+                        return;
                     }
                 }
             }
@@ -161,7 +149,7 @@ impl Game {
                     experimental.solve();
                     if experimental.solved() && !self.contains_contradiction() {
                         self.assign(&experimental);
-                        return self;
+                        return;
                     } else {
                         if DEBUG {
                             println!("<<< Backtracking");
@@ -170,8 +158,23 @@ impl Game {
                 }
             }
         }
-        self
     }
+
+    fn find_cell_to_guess(&self) -> Option<SquareValue> {
+        self.values
+            .iter()
+            .filter(|c| !c.has_known_value())
+            .min_by_key(|c| c.possibilities())
+            .cloned()
+    }
+
+    // The first technique is to start with known values and remove those values from the possible
+    //  values in the squares in the same row, column and subgrid, to maintain the "distinct" constraint
+    // Initially we know the given values. Removing possibilities may lead us to discover a new value,
+    // which can then be used to remove more values. Etc.
+    // So we keep propagating until we run of values to propagate
+    // This is enough to solve really simple Sudokus
+    // Example: [ 1 2 3 4 ] [ 4 ] [ 1 2 3 4 ] => [ 1 2 3 ] [ 4 ] [ 1 2 3 ]
 
     fn propagate(&mut self) -> bool {
         let mut progress_made = false;
@@ -179,53 +182,6 @@ impl Game {
             progress_made = true
         }
         progress_made
-    }
-
-    // Singleton promotion
-
-    fn promote_singletons(&mut self) -> bool {
-        let mut promoted = false;
-
-        for row in 1..=9 {
-            promoted |= self.promote_singleton_in(Game::all_values_in_row(row));
-        }
-
-        for col in 1..=9 {
-            promoted |= self.promote_singleton_in(Game::all_values_in_column(col));
-        }
-
-        for rowgrid in 0..=2 {
-            for colgrid in 0..=2 {
-                promoted |=
-                    self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
-            }
-        }
-
-        promoted
-    }
-
-    fn promote_singleton_in(&mut self, positions: [usize; 9]) -> bool {
-        let mut promoted = false;
-        for value in 1..=9 {
-            let mut occurences = 0;
-            for pos in positions.iter() {
-                if self.values[*pos].can_have_value(value) {
-                    occurences += 1;
-                }
-            }
-            if occurences == 1 {
-                for pos in positions.iter() {
-                    if self.values[*pos].can_have_value(value)
-                        && !self.values[*pos].has_known_value()
-                    {
-                        self.values[*pos].set_known_value(value);
-                        promoted = true;
-                    }
-                }
-            }
-        }
-
-        promoted
     }
 
     // Unit value propagation
@@ -276,12 +232,54 @@ impl Game {
             .cloned()
     }
 
-    fn find_cell_to_guess(&self) -> Option<SquareValue> {
-        self.values
-            .iter()
-            .filter(|c| !c.has_known_value())
-            .min_by_key(|c| c.possibilities())
-            .cloned()
+    // The second technique spots "singletons" in row/column/subgrid
+    // A "singleton" is a square that contains multiple possibilities but is the only one to have a certain value as possibility
+    // We can conclude from this that the square must have that "singleton" value, as all values must be used
+    // Example: [ 1 2 ] [ 1 2 3 ] [ 1 2 ] => [ 1 2 ] [ 3 ] [ 1 2 ]
+
+    fn promote_singletons(&mut self) -> bool {
+        let mut promoted = false;
+
+        for row in 1..=9 {
+            promoted |= self.promote_singleton_in(Game::all_values_in_row(row));
+        }
+
+        for col in 1..=9 {
+            promoted |= self.promote_singleton_in(Game::all_values_in_column(col));
+        }
+
+        for rowgrid in 0..=2 {
+            for colgrid in 0..=2 {
+                promoted |=
+                    self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
+            }
+        }
+
+        promoted
+    }
+
+    fn promote_singleton_in(&mut self, positions: [usize; 9]) -> bool {
+        let mut promoted = false;
+        for value in 1..=9 {
+            let mut occurences = 0;
+            for pos in positions.iter() {
+                if self.values[*pos].can_have_value(value) {
+                    occurences += 1;
+                }
+            }
+            if occurences == 1 {
+                for pos in positions.iter() {
+                    if self.values[*pos].can_have_value(value)
+                        && !self.values[*pos].has_known_value()
+                    {
+                        self.values[*pos].set_known_value(value);
+                        promoted = true;
+                    }
+                }
+            }
+        }
+
+        promoted
     }
 }
 

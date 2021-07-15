@@ -3,10 +3,10 @@ use rust_sudoku::sudoku::Game;
 use std::time::Instant;
 
 fn main() {
-    /*    solve("easiest 1", games::easy_sudoku());
+    solve("easiest 1", games::easy_sudoku());
     solve("easiest 2", games::easy_sudoku2());
     solve("intermediate", games::intermediate_sudoku1());
-    solve("difficult", games::difficult_sudoku1());*/
+    solve("difficult", games::difficult_sudoku1());
     solve("not fun", games::not_fun_sudoku1());
 }
 
