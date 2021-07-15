@@ -3,8 +3,9 @@
 // We start with assuming that any of the 1..9 values is possible and reduce the possibilities with constraints
 
 use std::ops::RangeInclusive;
+use std::fmt;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct SquareValue {
     possible_values: [bool; 9],
     pub row: usize,
@@ -77,11 +78,30 @@ impl SquareValue {
     pub fn has_been_propagated(&mut self) {
         self.propagated = true;
     }
+
+    pub fn is_possibly(&self, value: usize) -> bool {
+        self.possible_values[SquareValue::position_of_value(value)]
+    }
 }
 
 impl Default for SquareValue {
     fn default() -> Self {
         SquareValue::new()
+    }
+}
+
+impl fmt::Debug for SquareValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut output = String::new();
+        let placeholder = if self.has_known_value() { '_' } else { '.' };
+        for value in 1..=9 {
+            if self.is_possibly(value) {
+                output.push_str(&value.to_string());
+            } else {
+                output.push(placeholder);
+            }
+        }
+        write!(f, "{}", output)
     }
 }
 
@@ -103,12 +123,19 @@ mod tests {
             let mut value = SquareValue::new();
 
             assert!(!value.has_known_value());
+            for possible_value in 1..=9 {
+                assert!(value.is_possibly(possible_value));
+            }
 
             value.set_known_value(v);
 
             assert!(value.has_known_value());
 
             assert_eq!(v, value.value());
+
+            for possible_value in 1..=9 {
+                assert_eq!(possible_value == v, value.is_possibly(possible_value));
+            }
         }
     }
 

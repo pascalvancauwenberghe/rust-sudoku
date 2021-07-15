@@ -13,5 +13,9 @@ fn solve(name: &str, initial_values: &'static str) {
     let now = Instant::now();
     game.solve();
     let elapsed = now.elapsed().as_millis();
-    println!("Solution for game '{}' in {} ms:{}", game.name, elapsed, game);
+    if game.solved() {
+        println!("Solution for game '{}' in {} ms:{}", game.name, elapsed, game);
+    } else {
+        println!("No solution for game '{}' in {} ms. Score = {} :{:?}", game.name, elapsed,game.possibilities(), game);
+    }
 }

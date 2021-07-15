@@ -1,7 +1,8 @@
 use crate::square_value::SquareValue;
 use std::fmt;
 
-#[derive(Debug)]
+const DEBUG: bool = false;
+
 pub struct Game {
     pub name: String,
     values: [SquareValue; 81],
@@ -31,21 +32,6 @@ impl Game {
         (row - 1) * 9 + (col - 1)
     }
 
-    pub fn solve(&mut self) {
-        // The first technique is to start with known values and remove those values from the possible
-        //  values in the squares in the same row, column and subgrid, to maintain the "distinct" constraint
-        // Initially we know the given values. Removing possibilities may lead us to discover a new value,
-        // which can then be used to remove more values. Etc.
-        // So we keep propagating until we run of values to propagate
-        // This is enough to solve really simple Sudokus
-
-        while !self.solved() {
-            if !self.propagate_known_values() {
-                return;
-            }
-        }
-    }
-
     pub fn possibilities(&self) -> usize {
         self.values.iter().map(|c| c.possibilities()).sum()
     }
@@ -54,9 +40,152 @@ impl Game {
         self.possibilities() == 81
     }
 
+    // The first technique is to start with known values and remove those values from the possible
+    //  values in the squares in the same row, column and subgrid, to maintain the "distinct" constraint
+    // Initially we know the given values. Removing possibilities may lead us to discover a new value,
+    // which can then be used to remove more values. Etc.
+    // So we keep propagating until we run of values to propagate
+    // This is enough to solve really simple Sudokus
+    // Example: [ 1 2 3 4 ] [ 4] [ 1 2 3 4 ] => [ 1 2 3 ] [ 4 ] [ 1 2 3 ]
+
+    // The second technique spots "singletons" in row/column/subgrid
+    // A "singleton" is a square that contains multiple possibilities but is the only one to have a certain value as possibility
+    // We can conclude from this that the square must have that "singleton" value, as all values must be used
+    // Example: [ 1 2 ] [ 1 2 3] [ 1 2 ] => [ 1 2 ] [ 3 ] [ 1 2 ]
+    pub fn solve(&mut self) {
+        if DEBUG {
+            println!("Solving {:?}", self);
+        }
+        let mut progress_made = true;
+        while progress_made && !self.solved() {
+            while self.propagate_known_values() {};
+            if DEBUG {
+                println!("After propagating unit values {:?}", self);
+            }
+            progress_made = self.promote_singletons();
+            if progress_made {
+                if DEBUG {
+                    println!("After promoting singeletons {:?}", self);
+                }
+            }
+        }
+    }
+
+    // Singleton promotion
+
+    fn promote_singletons(&mut self) -> bool {
+        let mut promoted = false;
+
+        for row in 1..=9 {
+            promoted |= self.promote_singleton_in_row(row);
+        }
+
+        for col in 1..=9 {
+            promoted |= self.promote_singleton_in_column(col);
+        }
+
+        for rowgrid in 0..=2 {
+            for colgrid in 0..=2 {
+                promoted |= self.promote_singleton_in_subgrid(rowgrid, colgrid);
+            }
+        }
+
+        promoted
+    }
+
+    fn promote_singleton_in_row(&mut self, row: usize) -> bool {
+        let mut promoted = false;
+        for value in 1..=9 {
+            let mut occurences = 0;
+            for col in 1..=9 {
+                if self.values[Game::position_of(row, col)].is_possibly(value) {
+                    occurences += 1;
+                }
+            }
+            if occurences == 1 {
+                for col in 1..=9 {
+                    if self.values[Game::position_of(row, col)].is_possibly(value) && !self.values[Game::position_of(row, col)].has_known_value() {
+                        self.values[Game::position_of(row, col)].set_known_value(value);
+                        if DEBUG {
+                            println!("ROW => Found value {} in ({},{})", value, row, col);
+                        }
+                        promoted = true;
+                    }
+                }
+            }
+        }
+
+        promoted
+    }
+
+    fn promote_singleton_in_column(&mut self, col: usize) -> bool {
+        let mut promoted = false;
+        for value in 1..=9 {
+            let mut occurences = 0;
+            for row in 1..=9 {
+                if self.values[Game::position_of(row, col)].is_possibly(value) {
+                    occurences += 1;
+                }
+            }
+            if occurences == 1 {
+                for row in 1..=9 {
+                    if self.values[Game::position_of(row, col)].is_possibly(value) && !self.values[Game::position_of(row, col)].has_known_value() {
+                        self.values[Game::position_of(row, col)].set_known_value(value);
+                        if DEBUG {
+                            println!("COL => Found value {} in ({},{})", value, row, col);
+                        }
+                        promoted = true;
+                    }
+                }
+            }
+        }
+
+        promoted
+    }
+
+    fn promote_singleton_in_subgrid(&mut self, rowgrid: usize, colgrid: usize) -> bool {
+        let mut promoted = false;
+        for value in 1..=9 {
+            let mut occurences = 0;
+            for r in 1..=3 {
+                for c in 1..=3 {
+                    let row = rowgrid * 3 + r;
+                    let col = colgrid * 3 + c;
+                    if self.values[Game::position_of(row, col)].is_possibly(value) {
+                        occurences += 1;
+                    }
+                }
+            }
+            if occurences == 1 {
+                for r in 1..=3 {
+                    for c in 1..=3 {
+                        let row = rowgrid * 3 + r;
+                        let col = colgrid * 3 + c;
+                        if self.values[Game::position_of(row, col)].is_possibly(value) && !self.values[Game::position_of(row, col)].has_known_value() {
+                            self.values[Game::position_of(row, col)].set_known_value(value);
+                            if DEBUG {
+                                println!("GRID => Found value {} in ({},{})", value, row, col);
+                            }
+                            promoted = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        promoted
+    }
+
+    // Unit value propagation
     fn propagate_known_values(&mut self) -> bool {
         let square = self.find_cell_to_propagate();
         if let Some(value) = square {
+            if DEBUG {
+                println!("Propagating value {} of ({},{})",
+                         value.value(),
+                         value.row,
+                         value.col);
+            }
             self.propagate_known_values_in_column(&value);
             self.propagate_known_values_in_row(&value);
             self.propagate_known_values_in_subgrid(&value);
@@ -117,6 +246,28 @@ impl fmt::Display for Game {
             }
             output += "\n";
         }
+        write!(f, "{}", output)
+    }
+}
+
+impl fmt::Debug for Game {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut output = String::new();
+        output.push('\n');
+        for row in 1..=9 {
+            for col in 1..=9 {
+                let square = self.values[Game::position_of(row, col)];
+                output.push_str(&format!("{:?} ", square));
+                if col % 3 == 0 {
+                    output.push_str(" | ");
+                }
+            }
+            output.push('\n');
+            if row % 3 == 0 {
+                output.push_str("-------------------------------------------------------------------------------------------------\n");
+            }
+        }
+
         write!(f, "{}", output)
     }
 }
