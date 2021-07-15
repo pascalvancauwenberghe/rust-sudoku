@@ -8,6 +8,15 @@ pub struct Game {
     values: [SquareValue; 81],
 }
 
+impl Clone for Game {
+    fn clone(&self) -> Game {
+        Self {
+            name: self.name.clone(),
+            values: self.values,
+        }
+    }
+}
+
 impl Game {
     pub fn new(game_name: &str, initial: &'static str) -> Self {
         let mut result = Self {
@@ -28,6 +37,10 @@ impl Game {
         result
     }
 
+    fn assign(&mut self, other: &Game) {
+        self.values = other.values;
+    }
+
     fn position_of(row: usize, col: usize) -> usize {
         (row - 1) * 9 + (col - 1)
     }
@@ -38,6 +51,10 @@ impl Game {
 
     pub fn solved(&self) -> bool {
         self.possibilities() == 81
+    }
+
+    pub fn contains_contradiction(&self) -> bool {
+        self.values.iter().any(|c| c.is_contradiction())
     }
 
     // The first technique is to start with known values and remove those values from the possible
@@ -52,23 +69,52 @@ impl Game {
     // A "singleton" is a square that contains multiple possibilities but is the only one to have a certain value as possibility
     // We can conclude from this that the square must have that "singleton" value, as all values must be used
     // Example: [ 1 2 ] [ 1 2 3] [ 1 2 ] => [ 1 2 ] [ 3 ] [ 1 2 ]
-    pub fn solve(&mut self) {
+    pub fn solve(&mut self) -> &Self {
         if DEBUG {
             println!("Solving {:?}", self);
         }
         let mut progress_made = true;
-        while progress_made && !self.solved() {
+        while progress_made && !self.solved() && !self.contains_contradiction() {
             while self.propagate_known_values() {};
             if DEBUG {
                 println!("After propagating unit values {:?}", self);
             }
-            progress_made = self.promote_singletons();
-            if progress_made {
-                if DEBUG {
-                    println!("After promoting singeletons {:?}", self);
+            if !self.contains_contradiction() {
+                progress_made = self.promote_singletons();
+                if progress_made {
+                    if DEBUG {
+                        println!("After promoting singeletons {:?}", self);
+                    }
                 }
             }
         }
+
+        // Last resort: guess a value and recurse
+        if !self.solved() && !self.contains_contradiction() {
+            // heuristic guess squares with the least number of possibilities, so as to maximuize odds of guessing right
+            let candidate = self.find_cell_to_guess();
+            if let Some(square) = candidate {
+                for v in (1..=9).rev() {
+                    if square.is_possibly(v) {
+                        if DEBUG {
+                            println!("Guessing that square ({},{}) has value {}", square.row, square.col, v);
+                        }
+                        let mut experimental = self.clone();
+                        experimental.values[Game::position_of(square.row, square.col)].set_known_value(v);
+                        experimental.solve();
+                        if experimental.solved() && !self.contains_contradiction() {
+                            self.assign(&experimental);
+                            return self;
+                        } else {
+                            if DEBUG {
+                                println!("Backtracking");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self
     }
 
     // Singleton promotion
@@ -227,6 +273,14 @@ impl Game {
 
     fn find_cell_to_propagate(&self) -> Option<SquareValue> {
         self.values.iter().find(|v| v.needs_to_be_propagated()).cloned()
+    }
+
+    fn find_cell_to_guess(&self) -> Option<SquareValue> {
+        self.values
+            .iter()
+            .filter(|c| !c.has_known_value())
+            .min_by_key(|c| c.possibilities())
+            .cloned()
     }
 }
 

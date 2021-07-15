@@ -82,6 +82,10 @@ impl SquareValue {
     pub fn is_possibly(&self, value: usize) -> bool {
         self.possible_values[SquareValue::position_of_value(value)]
     }
+
+    pub fn is_contradiction(&self) -> bool {
+        self.possibilities() == 0
+    }
 }
 
 impl Default for SquareValue {
@@ -168,5 +172,18 @@ mod tests {
 
         assert!(value.has_known_value());
         assert_eq!(7, value.value());
+    }
+
+    #[test]
+    fn test_arriving_at_contradiction() {
+        let mut value = SquareValue::new();
+
+        assert!(!value.is_contradiction());
+
+        value.set_known_value(5);
+        assert!(!value.is_contradiction());
+
+        value.cant_have_value(5);
+        assert!(value.is_contradiction());
     }
 }
