@@ -86,6 +86,14 @@ impl SquareValue {
     pub fn is_contradiction(&self) -> bool {
         self.possibilities() == 0
     }
+
+    pub fn row_grid(&self) -> usize {
+        (self.row - 1) / 3
+    }
+
+    pub fn col_grid(&self) -> usize {
+        (self.col - 1) / 3
+    }
 }
 
 impl Default for SquareValue {

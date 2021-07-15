@@ -91,14 +91,14 @@ impl Game {
 
         // Last resort: guess a value and recurse
         if !self.solved() && !self.contains_contradiction() {
-            // heuristic guess squares with the least number of possibilities, so as to maximuize odds of guessing right
+            // heuristic: guess squares with the least number of possibilities, so as to maximize odds of guessing right
             let candidate = self.find_cell_to_guess();
             if let Some(square) = candidate {
                 for v in 1..=9 {
                     if square.is_possibly(v) {
-                        if DEBUG {
-                            println!("Guessing that square ({},{}) has value {}", square.row, square.col, v);
-                        }
+                        //if DEBUG {
+                        //println!(">>> Guessing that square ({},{}) has value {}", square.row, square.col, v);
+                        //}
                         let mut experimental = self.clone();
                         experimental.values[Game::position_of(square.row, square.col)].set_known_value(v);
                         experimental.solve();
@@ -106,9 +106,9 @@ impl Game {
                             self.assign(&experimental);
                             return self;
                         } else {
-                            if DEBUG {
-                                println!("Backtracking");
-                            }
+                            // if DEBUG {
+                            //println!("<<< Backtracking");
+                            //}
                         }
                     }
                 }
@@ -119,101 +119,88 @@ impl Game {
 
     // Singleton promotion
 
+    fn all_values_in_row(row: usize) -> [usize; 9] {
+        let mut result = [0; 9];
+
+        result[0] = Game::position_of(row, 1);
+        result[1] = Game::position_of(row, 2);
+        result[2] = Game::position_of(row, 3);
+        result[3] = Game::position_of(row, 4);
+        result[4] = Game::position_of(row, 5);
+        result[5] = Game::position_of(row, 6);
+        result[6] = Game::position_of(row, 7);
+        result[7] = Game::position_of(row, 8);
+        result[8] = Game::position_of(row, 9);
+
+        result
+    }
+
+    fn all_values_in_column(col: usize) -> [usize; 9] {
+        let mut result = [0; 9];
+
+        result[0] = Game::position_of(1, col);
+        result[1] = Game::position_of(2, col);
+        result[2] = Game::position_of(3, col);
+        result[3] = Game::position_of(4, col);
+        result[4] = Game::position_of(5, col);
+        result[5] = Game::position_of(6, col);
+        result[6] = Game::position_of(7, col);
+        result[7] = Game::position_of(8, col);
+        result[8] = Game::position_of(9, col);
+
+        result
+    }
+
+    fn all_values_in_subgrid(rowgrid: usize, colgrid: usize) -> [usize; 9] {
+        let mut result = [0; 9];
+
+        result[0] = Game::position_of(rowgrid * 3 + 1, colgrid * 3 + 1);
+        result[1] = Game::position_of(rowgrid * 3 + 1, colgrid * 3 + 2);
+        result[2] = Game::position_of(rowgrid * 3 + 1, colgrid * 3 + 3);
+        result[3] = Game::position_of(rowgrid * 3 + 2, colgrid * 3 + 1);
+        result[4] = Game::position_of(rowgrid * 3 + 2, colgrid * 3 + 2);
+        result[5] = Game::position_of(rowgrid * 3 + 2, colgrid * 3 + 3);
+        result[6] = Game::position_of(rowgrid * 3 + 3, colgrid * 3 + 1);
+        result[7] = Game::position_of(rowgrid * 3 + 3, colgrid * 3 + 2);
+        result[8] = Game::position_of(rowgrid * 3 + 3, colgrid * 3 + 3);
+
+        result
+    }
+
     fn promote_singletons(&mut self) -> bool {
         let mut promoted = false;
 
         for row in 1..=9 {
-            promoted |= self.promote_singleton_in_row(row);
+            promoted |= self.promote_singleton_in(Game::all_values_in_row(row));
         }
 
         for col in 1..=9 {
-            promoted |= self.promote_singleton_in_column(col);
+            promoted |= self.promote_singleton_in(Game::all_values_in_column(col));
         }
 
         for rowgrid in 0..=2 {
             for colgrid in 0..=2 {
-                promoted |= self.promote_singleton_in_subgrid(rowgrid, colgrid);
+                promoted |= self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
             }
         }
 
         promoted
     }
 
-    fn promote_singleton_in_row(&mut self, row: usize) -> bool {
+    fn promote_singleton_in(&mut self, positions: [usize; 9]) -> bool {
         let mut promoted = false;
         for value in 1..=9 {
             let mut occurences = 0;
-            for col in 1..=9 {
-                if self.values[Game::position_of(row, col)].is_possibly(value) {
+            for pos in positions.iter() {
+                if self.values[*pos].is_possibly(value) {
                     occurences += 1;
                 }
             }
             if occurences == 1 {
-                for col in 1..=9 {
-                    if self.values[Game::position_of(row, col)].is_possibly(value) && !self.values[Game::position_of(row, col)].has_known_value() {
-                        self.values[Game::position_of(row, col)].set_known_value(value);
-                        if DEBUG {
-                            println!("ROW => Found value {} in ({},{})", value, row, col);
-                        }
+                for pos in positions.iter() {
+                    if self.values[*pos].is_possibly(value) && !self.values[*pos].has_known_value() {
+                        self.values[*pos].set_known_value(value);
                         promoted = true;
-                    }
-                }
-            }
-        }
-
-        promoted
-    }
-
-    fn promote_singleton_in_column(&mut self, col: usize) -> bool {
-        let mut promoted = false;
-        for value in 1..=9 {
-            let mut occurences = 0;
-            for row in 1..=9 {
-                if self.values[Game::position_of(row, col)].is_possibly(value) {
-                    occurences += 1;
-                }
-            }
-            if occurences == 1 {
-                for row in 1..=9 {
-                    if self.values[Game::position_of(row, col)].is_possibly(value) && !self.values[Game::position_of(row, col)].has_known_value() {
-                        self.values[Game::position_of(row, col)].set_known_value(value);
-                        if DEBUG {
-                            println!("COL => Found value {} in ({},{})", value, row, col);
-                        }
-                        promoted = true;
-                    }
-                }
-            }
-        }
-
-        promoted
-    }
-
-    fn promote_singleton_in_subgrid(&mut self, rowgrid: usize, colgrid: usize) -> bool {
-        let mut promoted = false;
-        for value in 1..=9 {
-            let mut occurences = 0;
-            for r in 1..=3 {
-                for c in 1..=3 {
-                    let row = rowgrid * 3 + r;
-                    let col = colgrid * 3 + c;
-                    if self.values[Game::position_of(row, col)].is_possibly(value) {
-                        occurences += 1;
-                    }
-                }
-            }
-            if occurences == 1 {
-                for r in 1..=3 {
-                    for c in 1..=3 {
-                        let row = rowgrid * 3 + r;
-                        let col = colgrid * 3 + c;
-                        if self.values[Game::position_of(row, col)].is_possibly(value) && !self.values[Game::position_of(row, col)].has_known_value() {
-                            self.values[Game::position_of(row, col)].set_known_value(value);
-                            if DEBUG {
-                                println!("GRID => Found value {} in ({},{})", value, row, col);
-                            }
-                            promoted = true;
-                        }
                     }
                 }
             }
@@ -232,41 +219,21 @@ impl Game {
                          value.row,
                          value.col);
             }
-            self.propagate_known_values_in_column(&value);
-            self.propagate_known_values_in_row(&value);
-            self.propagate_known_values_in_subgrid(&value);
+            self.propagate_known_values_in_all_except(&value, Game::all_values_in_column(value.col));
+            self.propagate_known_values_in_all_except(&value, Game::all_values_in_row(value.row));
+            self.propagate_known_values_in_all_except(&value, Game::all_values_in_subgrid(value.row_grid(), value.col_grid()));
+
             self.values[Game::position_of(value.row, value.col)].has_been_propagated();
             return true;
         }
         false
     }
 
-    fn propagate_known_values_in_column(&mut self, square: &SquareValue) {
-        for row in 1..=9 {
-            if row != square.row {
-                self.values[Game::position_of(row, square.col)].cant_have_value(square.value());
-            }
-        }
-    }
-
-    fn propagate_known_values_in_row(&mut self, square: &SquareValue) {
-        for col in 1..=9 {
-            if col != square.col {
-                self.values[Game::position_of(square.row, col)].cant_have_value(square.value());
-            }
-        }
-    }
-
-    fn propagate_known_values_in_subgrid(&mut self, square: &SquareValue) {
-        let grid_row = (square.row - 1) / 3;
-        let grid_col = (square.col - 1) / 3;
-        for row in 1..=3 {
-            for col in 1..=3 {
-                let cell_row = grid_row * 3 + row;
-                let cell_col = grid_col * 3 + col;
-                if cell_row != square.row || cell_col != square.col {
-                    self.values[Game::position_of(cell_row, cell_col)].cant_have_value(square.value());
-                }
+    fn propagate_known_values_in_all_except(&mut self, square: &SquareValue, positions: [usize; 9]) {
+        let known_value = square.value();
+        for pos in positions.iter() {
+            if *pos != Game::position_of(square.row, square.col) {
+                self.values[*pos].cant_have_value(known_value);
             }
         }
     }

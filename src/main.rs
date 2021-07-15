@@ -13,10 +13,10 @@ fn solve(name: &str, initial_values: &'static str) {
     let mut game = Game::new(name, initial_values);
     let now = Instant::now();
     game.solve();
-    let elapsed = now.elapsed().as_millis();
+    let elapsed = now.elapsed().as_micros();
     if game.solved() {
-        println!("Solution for game '{}' in {} ms:{}", game.name, elapsed, game);
+        println!("Solution for game '{}' in {} µs:{}", game.name, elapsed, game);
     } else {
-        println!("No solution for game '{}' in {} ms. Score = {} :{:?}", game.name, elapsed, game.possibilities(), game);
+        println!("No solution for game '{}' in {} µs. Score = {} :{:?}", game.name, elapsed, game.possibilities(), game);
     }
 }
