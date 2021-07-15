@@ -1,3 +1,5 @@
+// Examples from https://sandiway.arizona.edu/sudoku/examples.html
+
 pub fn easy_sudoku() -> &'static str {
     r#"
 ...26.7.1
@@ -23,5 +25,33 @@ pub fn easy_sudoku_solution() -> &'static str {
 519326874
 248957136
 763418259
+"#
+}
+
+pub fn easy_sudoku2() -> &'static str {
+    r#"
+1..489..6
+73.....4.
+.....1295
+..712.6..
+5..7.3..8
+..6.957..
+9146.....
+.2.....37
+8..512..4
+"#
+}
+
+pub fn easy_sudoku2_solution() -> &'static str {
+    r#"
+152489376
+739256841
+468371295
+387124659
+591763428
+246895713
+914637582
+625948137
+873512964
 "#
 }

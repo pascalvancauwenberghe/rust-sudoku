@@ -1,12 +1,13 @@
 use std::time::Instant;
-
-mod games;
-mod square_value;
-mod sudoku;
+use rust_sudoku::sudoku::Game;
+use rust_sudoku::games;
 
 fn main() {
-    let mut game = sudoku::Game::new("easiest", games::easy_sudoku());
+    solve(&mut Game::new("easiest 1", games::easy_sudoku()));
+    solve(&mut Game::new("easiest 2", games::easy_sudoku2()));
+}
 
+fn solve(game: &mut Game) {
     let now = Instant::now();
     game.solve();
     let elapsed = now.elapsed().as_millis();

@@ -59,6 +59,7 @@ impl Game {
         if let Some(value) = square {
             self.propagate_known_values_in_column(&value);
             self.propagate_known_values_in_row(&value);
+            self.propagate_known_values_in_subgrid(&value);
             self.values[Game::position_of(value.row, value.col)].has_been_propagated();
             return true;
         }
@@ -77,6 +78,20 @@ impl Game {
         for col in 1..=9 {
             if col != square.col {
                 self.values[Game::position_of(square.row, col)].cant_have_value(square.value());
+            }
+        }
+    }
+
+    fn propagate_known_values_in_subgrid(&mut self, square: &SquareValue) {
+        let grid_row = (square.row - 1) / 3;
+        let grid_col = (square.col - 1) / 3;
+        for row in 1..=3 {
+            for col in 1..=3 {
+                let cell_row = grid_row * 3 + row;
+                let cell_col = grid_col * 3 + col;
+                if cell_row != square.row || cell_col != square.col {
+                    self.values[Game::position_of(cell_row, cell_col)].cant_have_value(square.value());
+                }
             }
         }
     }
