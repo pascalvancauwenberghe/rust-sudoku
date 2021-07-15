@@ -3,11 +3,13 @@ use rust_sudoku::sudoku::Game;
 use rust_sudoku::games;
 
 fn main() {
-    solve(&mut Game::new("easiest 1", games::easy_sudoku()));
-    solve(&mut Game::new("easiest 2", games::easy_sudoku2()));
+    solve("easiest 1", games::easy_sudoku());
+    solve("easiest 2", games::easy_sudoku2());
+    solve("intermediate", games::intermediate_sudoku1());
 }
 
-fn solve(game: &mut Game) {
+fn solve(name: &str, initial_values: &'static str) {
+    let mut game = Game::new(name, initial_values);
     let now = Instant::now();
     game.solve();
     let elapsed = now.elapsed().as_millis();
