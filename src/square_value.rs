@@ -2,8 +2,8 @@
 // Each boolean in possible_values indicates if the corresponding value can be in the cell
 // We start with assuming that any of the 1..9 values is possible and reduce the possibilities with constraints
 
-use std::ops::RangeInclusive;
 use std::fmt;
+use std::ops::RangeInclusive;
 
 #[derive(Copy, Clone)]
 pub struct SquareValue {
@@ -41,6 +41,10 @@ impl SquareValue {
         self.possibilities() == 1
     }
 
+    pub fn is_contradiction(&self) -> bool {
+        self.possibilities() == 0
+    }
+
     pub fn possibilities(&self) -> usize {
         self.possible_values.iter().filter(|v| **v).count()
     }
@@ -69,6 +73,11 @@ impl SquareValue {
         self.possible_values[SquareValue::position_of_value(value)] = false;
     }
 
+    // Check if the given value is still possible
+    pub fn can_have_value(&self, value: usize) -> bool {
+        self.possible_values[SquareValue::position_of_value(value)]
+    }
+
     // Known values must be "propagated": the squares's value must be removed from the possibilities of squares that have a "distinct" relation with it
     // We keep track of which squares have been propagated
     pub fn needs_to_be_propagated(&self) -> bool {
@@ -79,14 +88,7 @@ impl SquareValue {
         self.propagated = true;
     }
 
-    pub fn is_possibly(&self, value: usize) -> bool {
-        self.possible_values[SquareValue::position_of_value(value)]
-    }
-
-    pub fn is_contradiction(&self) -> bool {
-        self.possibilities() == 0
-    }
-
+    // Determine coordinates 0..=2 of the subgrid the square is in
     pub fn row_grid(&self) -> usize {
         (self.row - 1) / 3
     }
@@ -105,9 +107,15 @@ impl Default for SquareValue {
 impl fmt::Debug for SquareValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::new();
-        let placeholder = if self.has_known_value() { '_' } else { '.' };
+        let placeholder = if self.has_known_value() {
+            '_'
+        } else if self.is_contradiction() {
+            'X'
+        } else {
+            '.'
+        };
         for value in 1..=9 {
-            if self.is_possibly(value) {
+            if self.can_have_value(value) {
                 output.push_str(&value.to_string());
             } else {
                 output.push(placeholder);
@@ -136,7 +144,7 @@ mod tests {
 
             assert!(!value.has_known_value());
             for possible_value in 1..=9 {
-                assert!(value.is_possibly(possible_value));
+                assert!(value.can_have_value(possible_value));
             }
 
             value.set_known_value(v);
@@ -146,7 +154,7 @@ mod tests {
             assert_eq!(v, value.value());
 
             for possible_value in 1..=9 {
-                assert_eq!(possible_value == v, value.is_possibly(possible_value));
+                assert_eq!(possible_value == v, value.can_have_value(possible_value));
             }
         }
     }

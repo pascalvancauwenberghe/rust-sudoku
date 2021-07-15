@@ -30,3 +30,10 @@ fn test_can_solve_difficult_sudoku() {
     game.solve();
     assert_eq!(difficult_sudoku1_solution(), game.to_string());
 }
+
+#[test]
+fn test_can_solve_notfun_sudoku() {
+    let mut game = Game::new("not fun", not_fun_sudoku1());
+    game.solve();
+    assert_eq!(not_fun_sudoku1_solution(), game.to_string());
+}
