@@ -1,8 +1,10 @@
 use crate::square_value::SquareValue;
 use std::fmt;
 
+// Set this variable to true to get a step by step printout of actions and intermediate state of the game
 const DEBUG: bool = false;
 
+// A sudoku game has a name and 9x9 squares with values
 pub struct Game {
     pub name: String,
     values: [SquareValue; 81],
@@ -50,7 +52,7 @@ impl Game {
     }
 
     pub fn solved(&self) -> bool {
-        !self.values.iter().any(|c| !c.has_known_value())
+        self.values.iter().all(|c| c.has_known_value())
     }
 
     pub fn contains_contradiction(&self) -> bool {
@@ -105,27 +107,40 @@ impl Game {
         result
     }
 
-    pub fn solve(&mut self) {
+    // Sudoku solver returns
+    // true -> solution found
+    // false -> no solution found
+    pub fn solve(&mut self) -> bool {
         if DEBUG {
             println!("Solving {:?}", self);
         }
+        // As long as we're making progress, apply our solving techniques
         let mut progress_made = true;
         while progress_made {
-            progress_made = self.propagate();
+            // Technique 1: propagate unit values to reduce possibilities in same row, column and subgrid
+            progress_made = self.propagate_all_known_values();
             if progress_made {
                 if DEBUG {
                     println!("After propagating known values {:?}", self);
                 }
-                if self.contains_contradiction() || self.solved() {
-                    return;
+                if self.solved() {
+                    return true;
                 }
+                if self.contains_contradiction() {
+                    return false;
+                }
+                // Technique 2: possibilities may have been reduced so that 'singletons' can be found
+                // When a singleton is promoted to value, this value must be propagated
                 progress_made = self.promote_singletons();
                 if progress_made {
                     if DEBUG {
-                        println!("After promoting singeletons {:?}", self);
+                        println!("After promoting singletons {:?}", self);
                     }
-                    if self.contains_contradiction() || self.solved() {
-                        return;
+                    if self.solved() {
+                        return true;
+                    }
+                    if self.contains_contradiction() {
+                        return false;
                     }
                 }
             }
@@ -133,31 +148,39 @@ impl Game {
 
         // Last resort: guess a value and recurse
         // heuristic: guess squares with the least number of possibilities, so as to maximize odds of guessing right
+        // Once we make a guess, we first apply out solving techniques again.
+        // If we chose wrong, we will arrive at a contradiction == a square without any possibilities.
+        // In that case
+        // - try the next possibility
+        // - backtrack to the previous guess if no possibilities left at this level
+        // If a guess leads to a solution, keep the solution and return to previous level
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
             for v in 1..=9 {
                 if square.can_have_value(v) {
                     if DEBUG {
                         println!(
-                            ">>> Guessing that square ({},{}) has value {}",
+                            ">>> Guess that square ({},{}) has value {}",
                             square.row, square.col, v
                         );
                     }
                     let mut experimental = self.clone();
-                    experimental.values[Game::position_of(square.row, square.col)]
-                        .set_known_value(v);
-                    experimental.solve();
-                    if experimental.solved() && !self.contains_contradiction() {
+                    experimental.values[Game::position_of(square.row, square.col)].set_known_value(v);
+                    if experimental.solve() {
                         self.assign(&experimental);
-                        return;
+                        return true;
                     } else {
                         if DEBUG {
-                            println!("<<< Backtracking");
+                            println!("<<< Guess that square ({},{}) has value {} didn't work", square.row, square.col, v);
                         }
                     }
                 }
             }
         }
+        if DEBUG {
+            println!("<<< Backtracking");
+        }
+        false
     }
 
     fn find_cell_to_guess(&self) -> Option<SquareValue> {
@@ -172,14 +195,14 @@ impl Game {
     //  values in the squares in the same row, column and subgrid, to maintain the "distinct" constraint
     // Initially we know the given values. Removing possibilities may lead us to discover a new value,
     // which can then be used to remove more values. Etc.
-    // So we keep propagating until we run of values to propagate
+    // So we keep propagating until we run out of values to propagate
     // This is enough to solve really simple Sudokus
     // Example: [ 1 2 3 4 ] [ 4 ] [ 1 2 3 4 ] => [ 1 2 3 ] [ 4 ] [ 1 2 3 ]
 
-    fn propagate(&mut self) -> bool {
+    fn propagate_all_known_values(&mut self) -> bool {
         let mut progress_made = false;
         while self.propagate_known_values() {
-            progress_made = true
+            progress_made = true;
         }
         progress_made
     }
@@ -196,15 +219,9 @@ impl Game {
                     value.col
                 );
             }
-            self.propagate_known_values_in_all_except(
-                &value,
-                Game::all_values_in_column(value.col),
-            );
+            self.propagate_known_values_in_all_except(&value, Game::all_values_in_column(value.col));
             self.propagate_known_values_in_all_except(&value, Game::all_values_in_row(value.row));
-            self.propagate_known_values_in_all_except(
-                &value,
-                Game::all_values_in_subgrid(value.row_grid(), value.col_grid()),
-            );
+            self.propagate_known_values_in_all_except(&value, Game::all_values_in_subgrid(value.row_grid(), value.col_grid()));
 
             self.values[Game::position_of(value.row, value.col)].has_been_propagated();
             return true;
@@ -250,8 +267,7 @@ impl Game {
 
         for rowgrid in 0..=2 {
             for colgrid in 0..=2 {
-                promoted |=
-                    self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
+                promoted |= self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
             }
         }
 
@@ -283,7 +299,7 @@ impl Game {
     }
 }
 
-// Default toString implementation. Does nothing now, will print current value of game, solution if found one
+// Default toString implementation. Prints out known values as digit and unknown values as '.'. One row per line, same as the input format
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
@@ -303,6 +319,13 @@ impl fmt::Display for Game {
     }
 }
 
+// Debug output shows the grid with subdivisions + all possible values of each cell
+// If a square is known, the other possibilities are shown as '_', otherwise as '.'.
+// E.g.
+// ..3..67.. = 3 possibilities left
+// _____6___ = value is known to be 6
+// XXXXXXXXX = inconsistent state, nothing is possible
+// An inconsistent square (without possibilities) is shown as 'XXXXXXXXX'
 impl fmt::Debug for Game {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::new();
@@ -330,6 +353,8 @@ impl fmt::Debug for Game {
 // Digit => value of the digit 1..9
 // '.'   => 0
 // values are arranged row per row
+// Empty (less than 9 chars) are skipped
+// The input doesn't have to contain 9 rows. If rows are missing, they are assumed to be empty (= 0 values)
 fn parse_initial_sudoku_values(values: &str) -> [usize; 81] {
     let lines = values.lines();
     let mut result: [usize; 81] = [0; 81];
