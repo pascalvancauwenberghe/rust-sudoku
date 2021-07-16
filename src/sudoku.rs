@@ -1,5 +1,6 @@
 use crate::square_value::SquareValue;
 use std::fmt;
+use std::ops::RangeInclusive;
 
 // Set this variable to true to get a step by step printout of actions and intermediate state of the game
 const DEBUG: bool = false;
@@ -20,13 +21,17 @@ impl Clone for Game {
 }
 
 impl Game {
+    const ALL_VALUES: RangeInclusive<usize> = 1..=9;
+    const ALL_ROWS: RangeInclusive<usize> = 1..=9;
+    const ALL_COLUMNS: RangeInclusive<usize> = 1..=9;
+
     pub fn new(game_name: &str, initial: &'static str) -> Self {
         let mut result = Self {
             name: game_name.to_string(),
             values: [SquareValue::new(); 81],
         };
-        for row in 1..=9 {
-            for col in 1..=9 {
+        for row in Game::ALL_ROWS {
+            for col in Game::ALL_COLUMNS {
                 result.values[Game::position_of(row, col)].at(row, col);
             }
         }
@@ -156,7 +161,7 @@ impl Game {
         // If a guess leads to a solution, keep the solution and return to previous level
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
-            for v in 1..=9 {
+            for v in Game::ALL_VALUES {
                 if square.can_have_value(v) {
                     if DEBUG {
                         println!(
@@ -234,9 +239,10 @@ impl Game {
         square: &SquareValue,
         positions: [usize; 9],
     ) {
+        let known_position = Game::position_of(square.row, square.col);
         let known_value = square.value();
         for pos in positions.iter() {
-            if *pos != Game::position_of(square.row, square.col) {
+            if *pos != known_position {
                 self.values[*pos].cant_have_value(known_value);
             }
         }
@@ -257,11 +263,11 @@ impl Game {
     fn promote_singletons(&mut self) -> bool {
         let mut promoted = false;
 
-        for row in 1..=9 {
+        for row in Game::ALL_ROWS {
             promoted |= self.promote_singleton_in(Game::all_values_in_row(row));
         }
 
-        for col in 1..=9 {
+        for col in Game::ALL_COLUMNS {
             promoted |= self.promote_singleton_in(Game::all_values_in_column(col));
         }
 
@@ -276,7 +282,7 @@ impl Game {
 
     fn promote_singleton_in(&mut self, positions: [usize; 9]) -> bool {
         let mut promoted = false;
-        for value in 1..=9 {
+        for value in Game::ALL_VALUES {
             let mut occurences = 0;
             for pos in positions.iter() {
                 if self.values[*pos].can_have_value(value) {
@@ -304,8 +310,8 @@ impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         output += "\n";
-        for row in 1..=9 {
-            for col in 1..=9 {
+        for row in Game::ALL_ROWS {
+            for col in Game::ALL_COLUMNS {
                 let value = &self.values[Game::position_of(row, col)];
                 if !value.has_known_value() {
                     output.push('.');
@@ -330,9 +336,9 @@ impl fmt::Debug for Game {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::new();
         output.push_str("\n  -------------------------------------------------------------------------------------------------\n");
-        for row in 1..=9 {
+        for row in Game::ALL_ROWS {
             output.push_str(" | ");
-            for col in 1..=9 {
+            for col in Game::ALL_COLUMNS {
                 let square = self.values[Game::position_of(row, col)];
                 output.push_str(&format!("{:?} ", square));
                 if col % 3 == 0 {
@@ -362,7 +368,7 @@ fn parse_initial_sudoku_values(values: &str) -> [usize; 81] {
     for line in lines {
         if line.len() >= 9 {
             row += 1;
-            for col in 1..=9 {
+            for col in Game::ALL_COLUMNS {
                 let kar = line.chars().nth(col - 1).unwrap();
                 if ('1'..='9').contains(&kar) {
                     result[Game::position_of(row, col)] = kar.to_digit(10).unwrap() as usize;
