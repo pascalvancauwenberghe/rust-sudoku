@@ -25,7 +25,7 @@ impl Game {
     const ALL_ROWS: RangeInclusive<usize> = 1..=9;
     const ALL_COLUMNS: RangeInclusive<usize> = 1..=9;
 
-    pub fn new(game_name: &str, initial: &'static str) -> Self {
+    pub fn new(game_name: &str, initial: &str) -> Self {
         let mut result = Self {
             name: game_name.to_string(),
             values: [SquareValue::new(); 81],
@@ -67,15 +67,9 @@ impl Game {
     fn all_values_in_row(row: usize) -> [usize; 9] {
         let mut result = [0; 9];
 
-        result[0] = Game::position_of(row, 1);
-        result[1] = Game::position_of(row, 2);
-        result[2] = Game::position_of(row, 3);
-        result[3] = Game::position_of(row, 4);
-        result[4] = Game::position_of(row, 5);
-        result[5] = Game::position_of(row, 6);
-        result[6] = Game::position_of(row, 7);
-        result[7] = Game::position_of(row, 8);
-        result[8] = Game::position_of(row, 9);
+        for col in Game::ALL_ROWS {
+            result[col - 1] = Game::position_of(row, col);
+        }
 
         result
     }
@@ -83,16 +77,9 @@ impl Game {
     fn all_values_in_column(col: usize) -> [usize; 9] {
         let mut result = [0; 9];
 
-        result[0] = Game::position_of(1, col);
-        result[1] = Game::position_of(2, col);
-        result[2] = Game::position_of(3, col);
-        result[3] = Game::position_of(4, col);
-        result[4] = Game::position_of(5, col);
-        result[5] = Game::position_of(6, col);
-        result[6] = Game::position_of(7, col);
-        result[7] = Game::position_of(8, col);
-        result[8] = Game::position_of(9, col);
-
+        for row in Game::ALL_ROWS {
+            result[row - 1] = Game::position_of(row, col);
+        }
         result
     }
 

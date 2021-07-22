@@ -10,7 +10,7 @@ fn main() {
     solve("not fun", games::not_fun_sudoku1());
 }
 
-fn solve(name: &str, initial_values: &'static str) {
+fn solve(name: &str, initial_values: &str) {
     let mut game = Game::new(name, initial_values);
     let now = Instant::now();
     game.solve();
