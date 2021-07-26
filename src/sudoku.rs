@@ -86,15 +86,17 @@ impl Game {
     fn all_values_in_subgrid(rowgrid: usize, colgrid: usize) -> [usize; 9] {
         let mut result = [0; 9];
 
-        result[0] = Game::position_of(rowgrid * 3 + 1, colgrid * 3 + 1);
-        result[1] = Game::position_of(rowgrid * 3 + 1, colgrid * 3 + 2);
-        result[2] = Game::position_of(rowgrid * 3 + 1, colgrid * 3 + 3);
-        result[3] = Game::position_of(rowgrid * 3 + 2, colgrid * 3 + 1);
-        result[4] = Game::position_of(rowgrid * 3 + 2, colgrid * 3 + 2);
-        result[5] = Game::position_of(rowgrid * 3 + 2, colgrid * 3 + 3);
-        result[6] = Game::position_of(rowgrid * 3 + 3, colgrid * 3 + 1);
-        result[7] = Game::position_of(rowgrid * 3 + 3, colgrid * 3 + 2);
-        result[8] = Game::position_of(rowgrid * 3 + 3, colgrid * 3 + 3);
+        let row_offset = rowgrid * 3;
+        let col_offset = colgrid * 3;
+
+        let mut pos = 0 ;
+        for r in 1..=3 {
+            for c in 1..=3 {
+                result[pos] = Game::position_of(row_offset + r, col_offset + c);
+                pos += 1 ;
+            }
+        }
+
 
         result
     }
@@ -128,12 +130,6 @@ impl Game {
                     if DEBUG {
                         println!("After promoting singletons {:?}", self);
                     }
-                    if self.solved() {
-                        return true;
-                    }
-                    if self.contains_contradiction() {
-                        return false;
-                    }
                 }
             }
         }
@@ -148,6 +144,7 @@ impl Game {
         // If a guess leads to a solution, keep the solution and return to previous level
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
+            let guess_position = Game::position_of(square.row, square.col);
             for v in Game::ALL_VALUES {
                 if square.can_have_value(v) {
                     if DEBUG {
@@ -157,7 +154,7 @@ impl Game {
                         );
                     }
                     let mut experimental = self.clone();
-                    experimental.values[Game::position_of(square.row, square.col)].set_known_value(v);
+                    experimental.values[guess_position].set_known_value(v);
                     if experimental.solve() {
                         self.assign(&experimental);
                         return true;
