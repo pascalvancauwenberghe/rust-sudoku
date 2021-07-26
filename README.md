@@ -1,5 +1,7 @@
 # rust-sudoku
 
+![Build](https://github.com/pascalvancauwenberghe/rust-sudoku/actions/workflows/build.yml/badge.svg)
+
 This is a small Sudoku solver that uses simple constraint satisfaction techniques. The goal of the project is to learn basic (no macros, no concurrency, console application without user interaction) Rust programming techniques.
 
 The code should
