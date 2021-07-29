@@ -51,8 +51,8 @@ impl SquareValue {
 
     // Set the possibilities so that only the given value is possible. Sets the initial given values
     pub fn set_known_value(&mut self, value: usize) {
-        for v in SquareValue::ALL_VALUES {
-            self.possible_values[SquareValue::position_of_value(v)] = false;
+        for v in self.possible_values.iter_mut() {
+            *v = false;
         }
         self.possible_values[SquareValue::position_of_value(value)] = true;
     }
