@@ -89,11 +89,11 @@ impl Game {
         let row_offset = rowgrid * 3;
         let col_offset = colgrid * 3;
 
-        let mut pos = 0 ;
+        let mut pos = 0;
         for r in 1..=3 {
             for c in 1..=3 {
                 result[pos] = Game::position_of(row_offset + r, col_offset + c);
-                pos += 1 ;
+                pos += 1;
             }
         }
 
@@ -268,19 +268,18 @@ impl Game {
         let mut promoted = false;
         for value in Game::ALL_VALUES {
             let mut occurences = 0;
+            let mut foundpos = 0;
             for pos in positions.iter() {
                 if self.values[*pos].can_have_value(value) {
                     occurences += 1;
+                    foundpos = *pos;
                 }
             }
             if occurences == 1 {
-                for pos in positions.iter() {
-                    if self.values[*pos].can_have_value(value)
-                        && !self.values[*pos].has_known_value()
-                    {
-                        self.values[*pos].set_known_value(value);
-                        promoted = true;
-                    }
+                if !self.values[foundpos].has_known_value()
+                {
+                    self.values[foundpos].set_known_value(value);
+                    promoted = true;
                 }
             }
         }
