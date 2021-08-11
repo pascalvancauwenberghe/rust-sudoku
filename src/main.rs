@@ -3,18 +3,18 @@ use rust_sudoku::sudoku::Game;
 use std::time::Instant;
 
 fn main() {
-    solve("easiest 1", games::easy_sudoku(),false);
-    solve("easiest 2", games::easy_sudoku2(),false);
-    solve("intermediate", games::intermediate_sudoku1(),false);
-    solve("difficult", games::difficult_sudoku1(),false);
-    solve("not fun", games::not_fun_sudoku1(),false);
+    solve("easiest 1", games::easy_sudoku(), false);
+    solve("easiest 2", games::easy_sudoku2(), false);
+    solve("intermediate", games::intermediate_sudoku1(), false);
+    solve("difficult", games::difficult_sudoku1(), false);
+    solve("not fun", games::not_fun_sudoku1(), false);
 }
 
 fn log(msg: &str) {
-    println!("{}",msg) ;
+    println!("{}", msg);
 }
 
-fn solve(name: &str, initial_values: &str,logging : bool) {
+fn solve(name: &str, initial_values: &str, logging: bool) {
     let mut game = Game::new(name, initial_values);
     if logging {
         game.logger(log);

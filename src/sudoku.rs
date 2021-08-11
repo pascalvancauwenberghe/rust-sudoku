@@ -1,5 +1,3 @@
-
-
 use crate::square_value::SquareValue;
 use std::fmt;
 use std::ops::RangeInclusive;
@@ -183,7 +181,10 @@ impl Game {
                         return true;
                     } else {
                         if self.logging {
-                            self.report(format!("<<< Guess that square ({},{}) has value {} didn't work", square.row, square.col, v));
+                            self.report(format!(
+                                "<<< Guess that square ({},{}) has value {} didn't work",
+                                square.row, square.col, v
+                            ));
                         }
                     }
                 }
@@ -231,9 +232,15 @@ impl Game {
                     value.col
                 ));
             }
-            self.propagate_known_values_in_all_except(&value, Game::all_values_in_column(value.col));
+            self.propagate_known_values_in_all_except(
+                &value,
+                Game::all_values_in_column(value.col),
+            );
             self.propagate_known_values_in_all_except(&value, Game::all_values_in_row(value.row));
-            self.propagate_known_values_in_all_except(&value, Game::all_values_in_subgrid(value.row_grid(), value.col_grid()));
+            self.propagate_known_values_in_all_except(
+                &value,
+                Game::all_values_in_subgrid(value.row_grid(), value.col_grid()),
+            );
 
             self.values[Game::position_of(value.row, value.col)].has_been_propagated();
             return true;
@@ -280,7 +287,8 @@ impl Game {
 
         for rowgrid in 0..=2 {
             for colgrid in 0..=2 {
-                promoted |= self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
+                promoted |=
+                    self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
             }
         }
 
@@ -298,8 +306,7 @@ impl Game {
                     foundpos = *pos;
                 }
             }
-            if occurences == 1 && !self.values[foundpos].has_known_value()
-            {
+            if occurences == 1 && !self.values[foundpos].has_known_value() {
                 self.values[foundpos].set_known_value(value);
                 promoted = true;
             }
