@@ -1,14 +1,17 @@
+
+
 use crate::square_value::SquareValue;
 use std::fmt;
 use std::ops::RangeInclusive;
 
-// Set this variable to true to get a step by step printout of actions and intermediate state of the game
-const DEBUG: bool = false;
-
 // A sudoku game has a name and 9x9 squares with values
+// You can optionally provide a logger function to output intermediate steps
+// logging flag allows for quick check if logging is enabled so that we don't pay the overhead of formatting output
 pub struct Game {
     pub name: String,
     values: [SquareValue; 81],
+    report: fn(&str),
+    logging: bool,
 }
 
 impl Clone for Game {
@@ -16,19 +19,29 @@ impl Clone for Game {
         Self {
             name: self.name.clone(),
             values: self.values,
+            report: self.report,
+            logging: self.logging,
         }
     }
 }
 
+// checks for self.logging are separate for readability
+#[allow(clippy::collapsible_else_if)]
+#[allow(clippy::collapsible_if)]
 impl Game {
     const ALL_VALUES: RangeInclusive<usize> = 1..=9;
     const ALL_ROWS: RangeInclusive<usize> = 1..=9;
     const ALL_COLUMNS: RangeInclusive<usize> = 1..=9;
 
+    // Default empty logger implementation
+    fn silent(_str: &str) {}
+
     pub fn new(game_name: &str, initial: &str) -> Self {
         let mut result = Self {
             name: game_name.to_string(),
             values: [SquareValue::new(); 81],
+            report: Game::silent,
+            logging: false,
         };
         for row in Game::ALL_ROWS {
             for col in Game::ALL_COLUMNS {
@@ -42,6 +55,17 @@ impl Game {
             }
         }
         result
+    }
+
+    // Provide a logger function for intermediate steps
+    pub fn logger(&mut self, output: fn(&str)) {
+        self.report = output;
+        self.logging = true;
+    }
+
+    fn report(&self, str: String) {
+        let f = self.report;
+        f(&str);
     }
 
     fn assign(&mut self, other: &Game) {
@@ -97,7 +121,6 @@ impl Game {
             }
         }
 
-
         result
     }
 
@@ -105,8 +128,8 @@ impl Game {
     // true -> solution found
     // false -> no solution found
     pub fn solve(&mut self) -> bool {
-        if DEBUG {
-            println!("Solving {:?}", self);
+        if self.logging {
+            self.report(format!("Solving {:?}", self));
         }
         // As long as we're making progress, apply our solving techniques
         let mut progress_made = true;
@@ -114,8 +137,8 @@ impl Game {
             // Technique 1: propagate unit values to reduce possibilities in same row, column and subgrid
             progress_made = self.propagate_all_known_values();
             if progress_made {
-                if DEBUG {
-                    println!("After propagating known values {:?}", self);
+                if self.logging {
+                    self.report(format!("After propagating known values {:?}", self));
                 }
                 if self.solved() {
                     return true;
@@ -127,8 +150,8 @@ impl Game {
                 // When a singleton is promoted to value, this value must be propagated
                 progress_made = self.promote_singletons();
                 if progress_made {
-                    if DEBUG {
-                        println!("After promoting singletons {:?}", self);
+                    if self.logging {
+                        self.report(format!("After promoting singletons {:?}", self));
                     }
                 }
             }
@@ -147,11 +170,11 @@ impl Game {
             let guess_position = Game::position_of(square.row, square.col);
             for v in Game::ALL_VALUES {
                 if square.can_have_value(v) {
-                    if DEBUG {
-                        println!(
+                    if self.logging {
+                        self.report(format!(
                             ">>> Guess that square ({},{}) has value {}",
                             square.row, square.col, v
-                        );
+                        ));
                     }
                     let mut experimental = self.clone();
                     experimental.values[guess_position].set_known_value(v);
@@ -159,15 +182,15 @@ impl Game {
                         self.assign(&experimental);
                         return true;
                     } else {
-                        if DEBUG {
-                            println!("<<< Guess that square ({},{}) has value {} didn't work", square.row, square.col, v);
+                        if self.logging {
+                            self.report(format!("<<< Guess that square ({},{}) has value {} didn't work", square.row, square.col, v));
                         }
                     }
                 }
             }
         }
-        if DEBUG {
-            println!("<<< Backtracking");
+        if self.logging {
+            self.report("<<< Backtracking".to_string());
         }
         false
     }
@@ -200,13 +223,13 @@ impl Game {
     fn propagate_known_values(&mut self) -> bool {
         let square = self.find_cell_to_propagate();
         if let Some(value) = square {
-            if DEBUG {
-                println!(
+            if self.logging {
+                self.report(format!(
                     "Propagating value {} of ({},{})",
                     value.value(),
                     value.row,
                     value.col
-                );
+                ));
             }
             self.propagate_known_values_in_all_except(&value, Game::all_values_in_column(value.col));
             self.propagate_known_values_in_all_except(&value, Game::all_values_in_row(value.row));
@@ -275,12 +298,10 @@ impl Game {
                     foundpos = *pos;
                 }
             }
-            if occurences == 1 {
-                if !self.values[foundpos].has_known_value()
-                {
-                    self.values[foundpos].set_known_value(value);
-                    promoted = true;
-                }
+            if occurences == 1 && !self.values[foundpos].has_known_value()
+            {
+                self.values[foundpos].set_known_value(value);
+                promoted = true;
             }
         }
 
