@@ -9,6 +9,7 @@ fn main() {
     solve("difficult", games::difficult_sudoku1(), false);
     solve("not fun", games::not_fun_sudoku1(), false);
     solve("computer freaks out", games::computer_freaks_out(), false);
+    solve("given_36_digits", games::given_36_digits(), false);
 }
 
 fn log(msg: &str) {

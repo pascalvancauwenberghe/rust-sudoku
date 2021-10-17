@@ -170,3 +170,32 @@ pub fn computer_freaks_out_solution() -> &'static str {
 "#
 }
 
+// https://www.youtube.com/watch?v=SDTtcipqw7M
+
+pub fn given_36_digits() -> &'static str {
+    r#"
+.23.65.89
+9....4..5
+5..9.....
+6..3...18
+38.59...2
+....863..
+23......6
+8.7.2...3
+.96.5382.
+"#
+}
+
+pub fn given_36_digits_solution() -> &'static str {
+    r#"
+723165489
+961874235
+548932167
+652347918
+384591672
+179286354
+235418796
+817629543
+496753821
+"#
+}

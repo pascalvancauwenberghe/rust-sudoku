@@ -44,3 +44,10 @@ fn test_can_solve_computer_freaks_out_sudoku() {
     game.solve();
     assert_eq!(computer_freaks_out_solution(), game.to_string());
 }
+
+#[test]
+fn test_can_solve_given_36_digits() {
+    let mut game = Game::new("given_36_digits", given_36_digits());
+    game.solve();
+    assert_eq!(given_36_digits_solution(), game.to_string());
+}
