@@ -37,3 +37,10 @@ fn test_can_solve_notfun_sudoku() {
     game.solve();
     assert_eq!(not_fun_sudoku1_solution(), game.to_string());
 }
+
+#[test]
+fn test_can_solve_computer_freaks_out_sudoku() {
+    let mut game = Game::new("computer freaks out", computer_freaks_out());
+    game.solve();
+    assert_eq!(computer_freaks_out_solution(), game.to_string());
+}

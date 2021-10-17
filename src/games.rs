@@ -139,3 +139,34 @@ pub fn not_fun_sudoku1_solution() -> &'static str {
 731852649
 "#
 }
+
+// https://www.youtube.com/watch?v=zR-ngVP0kVg
+
+pub fn computer_freaks_out() -> &'static str {
+    r#"
+...1.2...
+..8.6.7.5
+.9.....8.
+4...1....
+.8.3.4.6.
+3...2.8..
+.6...547.
+..5.7.6.9
+.7.....5.
+"#
+}
+
+pub fn computer_freaks_out_solution() -> &'static str {
+    r#"
+547182396
+218963745
+693547281
+429618537
+781354962
+356729814
+162895473
+835471629
+974236158
+"#
+}
+

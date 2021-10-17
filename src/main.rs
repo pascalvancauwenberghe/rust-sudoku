@@ -8,6 +8,7 @@ fn main() {
     solve("intermediate", games::intermediate_sudoku1(), false);
     solve("difficult", games::difficult_sudoku1(), false);
     solve("not fun", games::not_fun_sudoku1(), false);
+    solve("computer freaks out", games::computer_freaks_out(), false);
 }
 
 fn log(msg: &str) {
