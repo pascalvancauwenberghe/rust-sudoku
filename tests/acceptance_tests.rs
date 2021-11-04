@@ -51,3 +51,10 @@ fn test_can_solve_given_36_digits() {
     game.solve();
     assert_eq!(given_36_digits_solution(), game.to_string());
 }
+
+#[test]
+fn test_can_solve_tatooine_sunset() {
+    let mut game = Game::new("Tatooine sunset", tatooine_sunset());
+    game.solve();
+    assert_eq!(tatooine_sunset_solution(), game.to_string());
+}

@@ -199,3 +199,33 @@ pub fn given_36_digits_solution() -> &'static str {
 496753821
 "#
 }
+
+// https://www.youtube.com/watch?v=TQ0lso4fJzk
+
+pub fn tatooine_sunset() -> &'static str {
+    r#"
+.........
+..98....7
+.8..6..5.
+.5..4..3.
+..79....2
+.........
+..27....9
+.4..5..6.
+3....62..
+"#
+}
+
+pub fn tatooine_sunset_solution() -> &'static str {
+    r#"
+124573896
+569814327
+783269154
+251647938
+437985612
+896321475
+612738549
+948152763
+375496281
+"#
+}

@@ -236,7 +236,10 @@ impl Game {
                 &value,
                 Game::all_values_in_column(value.col),
             );
-            self.propagate_known_values_in_all_except(&value, Game::all_values_in_row(value.row));
+            self.propagate_known_values_in_all_except(
+                &value,
+                Game::all_values_in_row(value.row)
+            );
             self.propagate_known_values_in_all_except(
                 &value,
                 Game::all_values_in_subgrid(value.row_grid(), value.col_grid()),
