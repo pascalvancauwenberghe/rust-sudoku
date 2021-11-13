@@ -28,7 +28,9 @@ fn solve(name: &str, initial_values: &str, logging: bool) {
     if game.solved() {
         println!(
             "Solution for game '{}' in {} µs:{}",
-            game.name(), elapsed, game
+            game.name(),
+            elapsed,
+            game
         );
     } else {
         println!(

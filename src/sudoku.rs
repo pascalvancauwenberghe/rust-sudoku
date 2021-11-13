@@ -2,7 +2,6 @@ use crate::square_value::SquareValue;
 use std::fmt;
 use std::ops::RangeInclusive;
 
-
 // A sudoku game has a name and 9x9 squares with values
 // You can optionally provide a logger function to output intermediate steps
 // logging flag allows for quick check if logging is enabled so that we don't pay the overhead of formatting output
@@ -17,10 +16,26 @@ pub struct Game {
     board: Board,
 }
 
+pub struct Experimental {
+    pub board: Board,
+    pub trying: SquareValue,
+    pub value: usize,
+}
+
+impl Experimental {
+    pub fn new(experimental: Board, square: SquareValue, val: usize) -> Self {
+        Self {
+            board: experimental,
+            trying: square,
+            value: val,
+        }
+    }
+}
+
 impl Game {
     pub fn new(game_name: &str, initial: &str) -> Self {
         Self {
-            board: Board::new(game_name, initial)
+            board: Board::new(game_name, initial),
         }
     }
 
@@ -200,6 +215,7 @@ impl Board {
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
             let guess_position = Board::position_of(square.row, square.col);
+            let mut leaves: Vec<Experimental> = Vec::new();
             for v in Board::ALL_VALUES {
                 if square.can_have_value(v) {
                     if self.logging {
@@ -210,16 +226,19 @@ impl Board {
                     }
                     let mut experimental = self.clone();
                     experimental.values[guess_position].set_known_value(v);
-                    if experimental.solve() {
-                        self.assign(&experimental);
-                        return true;
-                    } else {
-                        if self.logging {
-                            self.report(format!(
-                                "<<< Guess that square ({},{}) has value {} didn't work",
-                                square.row, square.col, v
-                            ));
-                        }
+                    leaves.push(Experimental::new(experimental, square, v));
+                }
+            }
+            for mut experimental in leaves {
+                if experimental.board.solve() {
+                    self.assign(&experimental.board);
+                    return true;
+                } else {
+                    if self.logging {
+                        self.report(format!(
+                            "<<< Guess that square ({},{}) has value {} didn't work",
+                            experimental.trying.row, experimental.trying.col, experimental.value
+                        ));
                     }
                 }
             }
@@ -270,10 +289,7 @@ impl Board {
                 &value,
                 Board::all_values_in_column(value.col),
             );
-            self.propagate_known_values_in_all_except(
-                &value,
-                Board::all_values_in_row(value.row),
-            );
+            self.propagate_known_values_in_all_except(&value, Board::all_values_in_row(value.row));
             self.propagate_known_values_in_all_except(
                 &value,
                 Board::all_values_in_subgrid(value.row_grid(), value.col_grid()),
