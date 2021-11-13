@@ -20,14 +20,16 @@ pub struct Experimental {
     pub board: Board,
     pub trying: SquareValue,
     pub value: usize,
+    pub depth: usize,
 }
 
 impl Experimental {
-    pub fn new(experimental: Board, square: SquareValue, val: usize) -> Self {
+    pub fn new(board: Board, trying: SquareValue, value: usize, depth: usize) -> Self {
         Self {
-            board: experimental,
-            trying: square,
-            value: val,
+            board,
+            trying,
+            value,
+            depth,
         }
     }
 }
@@ -45,7 +47,7 @@ impl Game {
     }
 
     pub fn solve(&mut self) -> bool {
-        self.board.solve()
+        self.board.solve(0)
     }
 
     pub fn solved(&self) -> bool {
@@ -174,7 +176,7 @@ impl Board {
     // Sudoku solver returns
     // true -> solution found
     // false -> no solution found
-    pub fn solve(&mut self) -> bool {
+    pub fn solve(&mut self, depth: usize) -> bool {
         if self.logging {
             self.report(format!("Solving {:?}", self));
         }
@@ -212,10 +214,10 @@ impl Board {
         // - try the next possibility
         // - backtrack to the previous guess if no possibilities left at this level
         // If a guess leads to a solution, keep the solution and return to previous level
+        let mut experiments: Vec<Experimental> = Vec::new();
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
             let guess_position = Board::position_of(square.row, square.col);
-            let mut leaves: Vec<Experimental> = Vec::new();
             for v in Board::ALL_VALUES {
                 if square.can_have_value(v) {
                     if self.logging {
@@ -226,23 +228,24 @@ impl Board {
                     }
                     let mut experimental = self.clone();
                     experimental.values[guess_position].set_known_value(v);
-                    leaves.push(Experimental::new(experimental, square, v));
-                }
-            }
-            for mut experimental in leaves {
-                if experimental.board.solve() {
-                    self.assign(&experimental.board);
-                    return true;
-                } else {
-                    if self.logging {
-                        self.report(format!(
-                            "<<< Guess that square ({},{}) has value {} didn't work",
-                            experimental.trying.row, experimental.trying.col, experimental.value
-                        ));
-                    }
+                    experiments.push(Experimental::new(experimental, square, v, depth + 1));
                 }
             }
         }
+        for mut experimental in experiments {
+            if experimental.board.solve(experimental.depth) {
+                self.assign(&experimental.board);
+                return true;
+            } else {
+                if self.logging {
+                    self.report(format!(
+                        "<<< Guess that square ({},{}) has value {} didn't work",
+                        experimental.trying.row, experimental.trying.col, experimental.value
+                    ));
+                }
+            }
+        }
+
         if self.logging {
             self.report("<<< Backtracking".to_string());
         }
@@ -543,7 +546,7 @@ mod tests {
     #[test]
     fn test_game_propagates_known_values() {
         let mut game = Board::new("easy", easy_sudoku());
-        game.solve();
+        game.solve(0);
         for col in 1..9 {
             let cell = game.values[Board::position_of(1, col)];
             if !cell.has_known_value() {
