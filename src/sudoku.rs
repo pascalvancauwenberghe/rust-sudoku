@@ -2,18 +2,52 @@ use crate::square_value::SquareValue;
 use std::fmt;
 use std::ops::RangeInclusive;
 
+
 // A sudoku game has a name and 9x9 squares with values
 // You can optionally provide a logger function to output intermediate steps
 // logging flag allows for quick check if logging is enabled so that we don't pay the overhead of formatting output
-pub struct Game {
+pub struct Board {
     pub name: String,
     values: [SquareValue; 81],
     report: fn(&str),
     logging: bool,
 }
 
-impl Clone for Game {
-    fn clone(&self) -> Game {
+pub struct Game {
+    board: Board,
+}
+
+impl Game {
+    pub fn new(game_name: &str, initial: &str) -> Self {
+        Self {
+            board: Board::new(game_name, initial)
+        }
+    }
+
+    // Provide a logger function for intermediate steps
+    pub fn logger(&mut self, output: fn(&str)) {
+        self.board.logger(output);
+    }
+
+    pub fn solve(&mut self) -> bool {
+        self.board.solve()
+    }
+
+    pub fn solved(&self) -> bool {
+        self.board.solved()
+    }
+
+    pub fn name(&self) -> String {
+        self.board.name.clone()
+    }
+
+    pub fn possibilities(&self) -> usize {
+        self.board.possibilities()
+    }
+}
+
+impl Clone for Board {
+    fn clone(&self) -> Board {
         Self {
             name: self.name.clone(),
             values: self.values,
@@ -26,7 +60,7 @@ impl Clone for Game {
 // checks for self.logging are separate for readability
 #[allow(clippy::collapsible_else_if)]
 #[allow(clippy::collapsible_if)]
-impl Game {
+impl Board {
     const ALL_VALUES: RangeInclusive<usize> = 1..=9;
     const ALL_ROWS: RangeInclusive<usize> = 1..=9;
     const ALL_COLUMNS: RangeInclusive<usize> = 1..=9;
@@ -38,12 +72,12 @@ impl Game {
         let mut result = Self {
             name: game_name.to_string(),
             values: [SquareValue::new(); 81],
-            report: Game::silent,
+            report: Board::silent,
             logging: false,
         };
-        for row in Game::ALL_ROWS {
-            for col in Game::ALL_COLUMNS {
-                result.values[Game::position_of(row, col)].at(row, col);
+        for row in Board::ALL_ROWS {
+            for col in Board::ALL_COLUMNS {
+                result.values[Board::position_of(row, col)].at(row, col);
             }
         }
         let parsed = parse_initial_sudoku_values(initial);
@@ -66,7 +100,7 @@ impl Game {
         f(&str);
     }
 
-    fn assign(&mut self, other: &Game) {
+    fn assign(&mut self, other: &Board) {
         self.values = other.values;
     }
 
@@ -89,8 +123,8 @@ impl Game {
     fn all_values_in_row(row: usize) -> [usize; 9] {
         let mut result = [0; 9];
 
-        for col in Game::ALL_ROWS {
-            result[col - 1] = Game::position_of(row, col);
+        for col in Board::ALL_ROWS {
+            result[col - 1] = Board::position_of(row, col);
         }
 
         result
@@ -99,8 +133,8 @@ impl Game {
     fn all_values_in_column(col: usize) -> [usize; 9] {
         let mut result = [0; 9];
 
-        for row in Game::ALL_ROWS {
-            result[row - 1] = Game::position_of(row, col);
+        for row in Board::ALL_ROWS {
+            result[row - 1] = Board::position_of(row, col);
         }
         result
     }
@@ -114,7 +148,7 @@ impl Game {
         let mut pos = 0;
         for r in 1..=3 {
             for c in 1..=3 {
-                result[pos] = Game::position_of(row_offset + r, col_offset + c);
+                result[pos] = Board::position_of(row_offset + r, col_offset + c);
                 pos += 1;
             }
         }
@@ -165,8 +199,8 @@ impl Game {
         // If a guess leads to a solution, keep the solution and return to previous level
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
-            let guess_position = Game::position_of(square.row, square.col);
-            for v in Game::ALL_VALUES {
+            let guess_position = Board::position_of(square.row, square.col);
+            for v in Board::ALL_VALUES {
                 if square.can_have_value(v) {
                     if self.logging {
                         self.report(format!(
@@ -234,18 +268,18 @@ impl Game {
             }
             self.propagate_known_values_in_all_except(
                 &value,
-                Game::all_values_in_column(value.col),
+                Board::all_values_in_column(value.col),
             );
             self.propagate_known_values_in_all_except(
                 &value,
-                Game::all_values_in_row(value.row)
+                Board::all_values_in_row(value.row),
             );
             self.propagate_known_values_in_all_except(
                 &value,
-                Game::all_values_in_subgrid(value.row_grid(), value.col_grid()),
+                Board::all_values_in_subgrid(value.row_grid(), value.col_grid()),
             );
 
-            self.values[Game::position_of(value.row, value.col)].has_been_propagated();
+            self.values[Board::position_of(value.row, value.col)].has_been_propagated();
             return true;
         }
         false
@@ -256,7 +290,7 @@ impl Game {
         square: &SquareValue,
         positions: [usize; 9],
     ) {
-        let known_position = Game::position_of(square.row, square.col);
+        let known_position = Board::position_of(square.row, square.col);
         let known_value = square.value();
         for pos in positions.iter() {
             if *pos != known_position {
@@ -280,18 +314,18 @@ impl Game {
     fn promote_singletons(&mut self) -> bool {
         let mut promoted = false;
 
-        for row in Game::ALL_ROWS {
-            promoted |= self.promote_singleton_in(Game::all_values_in_row(row));
+        for row in Board::ALL_ROWS {
+            promoted |= self.promote_singleton_in(Board::all_values_in_row(row));
         }
 
-        for col in Game::ALL_COLUMNS {
-            promoted |= self.promote_singleton_in(Game::all_values_in_column(col));
+        for col in Board::ALL_COLUMNS {
+            promoted |= self.promote_singleton_in(Board::all_values_in_column(col));
         }
 
         for rowgrid in 0..=2 {
             for colgrid in 0..=2 {
                 promoted |=
-                    self.promote_singleton_in(Game::all_values_in_subgrid(rowgrid, colgrid));
+                    self.promote_singleton_in(Board::all_values_in_subgrid(rowgrid, colgrid));
             }
         }
 
@@ -300,7 +334,7 @@ impl Game {
 
     fn promote_singleton_in(&mut self, positions: [usize; 9]) -> bool {
         let mut promoted = false;
-        for value in Game::ALL_VALUES {
+        for value in Board::ALL_VALUES {
             let mut occurences = 0;
             let mut foundpos = 0;
             for pos in positions.iter() {
@@ -320,13 +354,13 @@ impl Game {
 }
 
 // Default toString implementation. Prints out known values as digit and unknown values as '.'. One row per line, same as the input format
-impl fmt::Display for Game {
+impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         output += "\n";
-        for row in Game::ALL_ROWS {
-            for col in Game::ALL_COLUMNS {
-                let value = &self.values[Game::position_of(row, col)];
+        for row in Board::ALL_ROWS {
+            for col in Board::ALL_COLUMNS {
+                let value = &self.values[Board::position_of(row, col)];
                 if !value.has_known_value() {
                     output.push('.');
                 } else {
@@ -339,6 +373,12 @@ impl fmt::Display for Game {
     }
 }
 
+impl fmt::Display for Game {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.board.fmt(f)
+    }
+}
+
 // Debug output shows the grid with subdivisions + all possible values of each cell
 // If a square is known, the other possibilities are shown as '_', otherwise as '.'.
 // E.g.
@@ -346,14 +386,14 @@ impl fmt::Display for Game {
 // _____6___ = value is known to be 6
 // XXXXXXXXX = inconsistent state, nothing is possible
 // An inconsistent square (without possibilities) is shown as 'XXXXXXXXX'
-impl fmt::Debug for Game {
+impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::new();
         output.push_str("\n  -------------------------------------------------------------------------------------------------\n");
-        for row in Game::ALL_ROWS {
+        for row in Board::ALL_ROWS {
             output.push_str(" | ");
-            for col in Game::ALL_COLUMNS {
-                let square = self.values[Game::position_of(row, col)];
+            for col in Board::ALL_COLUMNS {
+                let square = self.values[Board::position_of(row, col)];
                 output.push_str(&format!("{:?} ", square));
                 if col % 3 == 0 {
                     output.push_str(" | ");
@@ -366,6 +406,12 @@ impl fmt::Debug for Game {
         }
 
         write!(f, "{}", output)
+    }
+}
+
+impl fmt::Debug for Game {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.board.fmt(f)
     }
 }
 
@@ -382,10 +428,10 @@ fn parse_initial_sudoku_values(values: &str) -> [usize; 81] {
     for line in lines {
         if line.len() >= 9 {
             row += 1;
-            for col in Game::ALL_COLUMNS {
+            for col in Board::ALL_COLUMNS {
                 let kar = line.chars().nth(col - 1).unwrap();
                 if ('1'..='9').contains(&kar) {
-                    result[Game::position_of(row, col)] = kar.to_digit(10).unwrap() as usize;
+                    result[Board::position_of(row, col)] = kar.to_digit(10).unwrap() as usize;
                 }
             }
         }
@@ -401,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_create_game_with_name() {
-        let game = Game::new("easy", easy_sudoku());
+        let game = Board::new("easy", easy_sudoku());
         assert_eq!("easy", game.name);
     }
 
@@ -474,16 +520,16 @@ mod tests {
 
     #[test]
     fn test_game_prints_initial_values() {
-        let game = Game::new("easy", easy_sudoku());
+        let game = Board::new("easy", easy_sudoku());
         assert_eq!(easy_sudoku(), game.to_string());
     }
 
     #[test]
     fn test_game_propagates_known_values() {
-        let mut game = Game::new("easy", easy_sudoku());
+        let mut game = Board::new("easy", easy_sudoku());
         game.solve();
         for col in 1..9 {
-            let cell = game.values[Game::position_of(1, col)];
+            let cell = game.values[Board::position_of(1, col)];
             if !cell.has_known_value() {
                 assert_eq!(9 - 4, cell.possibilities()); // 4 cells are known
             }
