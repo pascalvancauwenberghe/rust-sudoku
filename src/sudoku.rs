@@ -17,20 +17,20 @@ pub struct Game {
 }
 
 pub struct Experimental {
-    pub board: Board,
-    pub trying: SquareValue,
     pub value: usize,
     pub depth: usize,
+    pub branching: usize,
+    pub trying: SquareValue,
+    pub board: Board,
 }
 
 impl Experimental {
-    pub fn new(board: Board, trying: SquareValue, value: usize, depth: usize) -> Self {
-        Self {
-            board,
-            trying,
-            value,
-            depth,
-        }
+    pub fn new(board: Board, trying: SquareValue, value: usize, depth: usize, branching: usize) -> Self {
+        Self { value, depth, branching, trying, board }
+    }
+
+    pub fn order(&self) -> usize {
+        self.depth * 10000 + self.branching * 1000 + (self.trying.row * self.trying.col) + self.value
     }
 }
 
@@ -47,7 +47,34 @@ impl Game {
     }
 
     pub fn solve(&mut self) -> bool {
-        self.board.solve(0)
+        let solved = self.board.solve(0);
+        if !solved {
+            // Last resort: guess a value and recurse
+            // heuristic: guess squares with the least number of possibilities, so as to maximize odds of guessing right
+            // Once we make a guess, we first apply out solving techniques again.
+            // Search is performed breadth-first:
+            // - If we can't solve the initial problem (depth == 0), generate "experiments" (original problem + 1 guessed value) at level 1
+            // - Each time we get stuck at depth N, generate experiments at depth N+1
+            // - An experiment that results in a solved board, copies the experimental board in the result and returns
+            // - An experiment that results in inconsistencies is dropped
+            // - The list of experiments is kept sorted so that the experiments with smallest depth are at the back, to be popped and tried
+            let mut experiments = self.board.generate_experiments(0);
+            experiments.sort_by(|a, b| b.order().partial_cmp(&a.order()).unwrap());
+            while !self.board.solved() && !experiments.is_empty() {
+                if let Some(mut experimental) = experiments.pop() {
+                    if experimental.board.solve(experimental.depth) {
+                        self.board.assign(&experimental.board);
+                        return true;
+                    } else {
+                        if !experimental.board.contains_contradiction() {
+                            experiments.append(&mut experimental.board.generate_experiments(experimental.depth));
+                            experiments.sort_by(|a, b| b.order().partial_cmp(&a.order()).unwrap());
+                        }
+                    }
+                }
+            }
+        }
+        self.board.solved()
     }
 
     pub fn solved(&self) -> bool {
@@ -178,7 +205,7 @@ impl Board {
     // false -> no solution found
     pub fn solve(&mut self, depth: usize) -> bool {
         if self.logging {
-            self.report(format!("Solving {:?}", self));
+            self.report(format!("Solving board at depth {} {:?} ", depth, self));
         }
         // As long as we're making progress, apply our solving techniques
         let mut progress_made = true;
@@ -193,6 +220,9 @@ impl Board {
                     return true;
                 }
                 if self.contains_contradiction() {
+                    if self.logging {
+                        self.report(format!("Board results in contradiction. Backtracking. {:?}", self));
+                    }
                     return false;
                 }
                 // Technique 2: possibilities may have been reduced so that 'singletons' can be found
@@ -205,51 +235,30 @@ impl Board {
                 }
             }
         }
+        false
+    }
 
-        // Last resort: guess a value and recurse
-        // heuristic: guess squares with the least number of possibilities, so as to maximize odds of guessing right
-        // Once we make a guess, we first apply out solving techniques again.
-        // If we chose wrong, we will arrive at a contradiction == a square without any possibilities.
-        // In that case
-        // - try the next possibility
-        // - backtrack to the previous guess if no possibilities left at this level
-        // If a guess leads to a solution, keep the solution and return to previous level
+    fn generate_experiments(&self, depth: usize) -> Vec<Experimental> {
         let mut experiments: Vec<Experimental> = Vec::new();
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
             let guess_position = Board::position_of(square.row, square.col);
+            let branching = square.possibilities();
             for v in Board::ALL_VALUES {
                 if square.can_have_value(v) {
                     if self.logging {
                         self.report(format!(
-                            ">>> Guess that square ({},{}) has value {}",
-                            square.row, square.col, v
+                            ">>> Guess that square ({},{}) has value {} at level {}",
+                            square.row, square.col, v, depth
                         ));
                     }
                     let mut experimental = self.clone();
                     experimental.values[guess_position].set_known_value(v);
-                    experiments.push(Experimental::new(experimental, square, v, depth + 1));
+                    experiments.push(Experimental::new(experimental, square, v, depth + 1, branching));
                 }
             }
         }
-        for mut experimental in experiments {
-            if experimental.board.solve(experimental.depth) {
-                self.assign(&experimental.board);
-                return true;
-            } else {
-                if self.logging {
-                    self.report(format!(
-                        "<<< Guess that square ({},{}) has value {} didn't work",
-                        experimental.trying.row, experimental.trying.col, experimental.value
-                    ));
-                }
-            }
-        }
-
-        if self.logging {
-            self.report("<<< Backtracking".to_string());
-        }
-        false
+        experiments
     }
 
     fn find_cell_to_guess(&self) -> Option<SquareValue> {
