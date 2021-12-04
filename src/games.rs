@@ -229,3 +229,63 @@ pub fn tatooine_sunset_solution() -> &'static str {
 375496281
 "#
 }
+
+// https://www.youtube.com/watch?v=z3IAgDi6Ves
+
+pub fn kingda_ka() -> &'static str {
+    r#"
+...4.6...
+.12.3.5..
+.......7.
+8....4..7
+.6.7...5.
+5...8...9
+..3....2.
+....9..1.
+...3.5...
+"#
+}
+
+pub fn kingda_ka_solution() -> &'static str {
+    r#"
+935476281
+712938546
+486152973
+829564137
+364719852
+571283469
+693841725
+258697314
+147325698
+"#
+}
+
+// https://www.youtube.com/watch?v=z3IAgDi6Ves
+
+pub fn jovial_negative() -> &'static str {
+    r#"
+9...63...
+..12..5..
+7.2....3.
+...3.6.5.
+..34.76..
+.7.5.8...
+.8....1.5
+..7..12..
+...84...9
+"#
+}
+
+pub fn jovial_negative_solution() -> &'static str {
+    r#"
+954163872
+831274596
+762985431
+148326957
+523497618
+679518324
+286739145
+497651283
+315842769
+"#
+}

@@ -11,6 +11,8 @@ fn main() {
     solve("computer freaks out", games::computer_freaks_out(), false);
     solve("given_36_digits", games::given_36_digits(), false);
     solve("tatooine sunset", games::tatooine_sunset(), false);
+    solve("kingda ka", games::kingda_ka(), false);
+    solve("Jovial Negative", games::jovial_negative(), false);
 }
 
 fn log(msg: &str) {

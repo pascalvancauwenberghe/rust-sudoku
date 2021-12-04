@@ -58,3 +58,17 @@ fn test_can_solve_tatooine_sunset() {
     game.solve();
     assert_eq!(tatooine_sunset_solution(), game.to_string());
 }
+
+#[test]
+fn test_can_solve_kingda_ka() {
+    let mut game = Game::new("Kingda Ka", kingda_ka());
+    game.solve();
+    assert_eq!(kingda_ka_solution(), game.to_string());
+}
+
+#[test]
+fn test_can_solve_jovial_negative() {
+    let mut game = Game::new("Jovial Negative", jovial_negative());
+    game.solve();
+    assert_eq!(jovial_negative_solution(), game.to_string());
+}
