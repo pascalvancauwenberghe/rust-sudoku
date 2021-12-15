@@ -3,11 +3,13 @@ use std::fmt;
 use std::ops::RangeInclusive;
 
 // A sudoku game has a name and 9x9 squares with values
+// The depth indicates how many levels of 'guesses' were needed to find solution. 0 = no guessing
 // You can optionally provide a logger function to output intermediate steps
 // logging flag allows for quick check if logging is enabled so that we don't pay the overhead of formatting output
 pub struct Board {
     pub name: String,
     values: [SquareValue; 81],
+    pub depth: usize,
     report: fn(&str),
     logging: bool,
 }
@@ -18,19 +20,18 @@ pub struct Game {
 
 pub struct Experimental {
     pub value: usize,
-    pub depth: usize,
     pub branching: usize,
     pub trying: SquareValue,
     pub board: Board,
 }
 
 impl Experimental {
-    pub fn new(board: Board, trying: SquareValue, value: usize, depth: usize, branching: usize) -> Self {
-        Self { value, depth, branching, trying, board }
+    pub fn new(board: Board, trying: SquareValue, value: usize, branching: usize) -> Self {
+        Self { value, branching, trying, board }
     }
 
     pub fn order(&self) -> usize {
-        self.depth * 10000 + self.branching * 1000 + (self.trying.row * self.trying.col) + self.value
+        self.board.depth * 10000 + self.branching * 1000 + (self.trying.row * self.trying.col) + self.value
     }
 }
 
@@ -47,7 +48,7 @@ impl Game {
     }
 
     pub fn solve(&mut self) -> bool {
-        let solved = self.board.solve(0);
+        let solved = self.board.solve();
         if !solved {
             // Last resort: guess a value and recurse
             // heuristic: guess squares with the least number of possibilities, so as to maximize odds of guessing right
@@ -58,16 +59,16 @@ impl Game {
             // - An experiment that results in a solved board, copies the experimental board in the result and returns
             // - An experiment that results in inconsistencies is dropped
             // - The list of experiments is kept sorted so that the experiments with smallest depth are at the back, to be popped and tried
-            let mut experiments = self.board.generate_experiments(0);
+            let mut experiments = self.board.generate_experiments();
             experiments.sort_by(|a, b| b.order().partial_cmp(&a.order()).unwrap());
             while !self.board.solved() && !experiments.is_empty() {
                 if let Some(mut experimental) = experiments.pop() {
-                    if experimental.board.solve(experimental.depth) {
+                    if experimental.board.solve() {
                         self.board.assign(&experimental.board);
                         return true;
                     } else {
                         if !experimental.board.contains_contradiction() {
-                            experiments.append(&mut experimental.board.generate_experiments(experimental.depth));
+                            experiments.append(&mut experimental.board.generate_experiments());
                             experiments.sort_by(|a, b| b.order().partial_cmp(&a.order()).unwrap());
                         }
                     }
@@ -88,6 +89,10 @@ impl Game {
     pub fn possibilities(&self) -> usize {
         self.board.possibilities()
     }
+
+    pub fn depth(&self) -> usize {
+        self.board.depth
+    }
 }
 
 impl Clone for Board {
@@ -95,6 +100,7 @@ impl Clone for Board {
         Self {
             name: self.name.clone(),
             values: self.values,
+            depth: self.depth + 1,
             report: self.report,
             logging: self.logging,
         }
@@ -116,6 +122,7 @@ impl Board {
         let mut result = Self {
             name: game_name.to_string(),
             values: [SquareValue::new(); 81],
+            depth: 0,
             report: Board::silent,
             logging: false,
         };
@@ -146,6 +153,7 @@ impl Board {
 
     fn assign(&mut self, other: &Board) {
         self.values = other.values;
+        self.depth = other.depth;
     }
 
     fn position_of(row: usize, col: usize) -> usize {
@@ -203,9 +211,9 @@ impl Board {
     // Sudoku solver returns
     // true -> solution found
     // false -> no solution found
-    pub fn solve(&mut self, depth: usize) -> bool {
+    pub fn solve(&mut self) -> bool {
         if self.logging {
-            self.report(format!("Solving board at depth {} {:?} ", depth, self));
+            self.report(format!("Solving board at depth {} {:?} ", self.depth, self));
         }
         // As long as we're making progress, apply our solving techniques
         let mut progress_made = true;
@@ -238,7 +246,7 @@ impl Board {
         false
     }
 
-    fn generate_experiments(&self, depth: usize) -> Vec<Experimental> {
+    fn generate_experiments(&self) -> Vec<Experimental> {
         let mut experiments: Vec<Experimental> = Vec::new();
         let candidate = self.find_cell_to_guess();
         if let Some(square) = candidate {
@@ -249,12 +257,12 @@ impl Board {
                     if self.logging {
                         self.report(format!(
                             ">>> Guess that square ({},{}) has value {} at level {}",
-                            square.row, square.col, v, depth
+                            square.row, square.col, v, self.depth
                         ));
                     }
                     let mut experimental = self.clone();
                     experimental.values[guess_position].set_known_value(v);
-                    experiments.push(Experimental::new(experimental, square, v, depth + 1, branching));
+                    experiments.push(Experimental::new(experimental, square, v, branching));
                 }
             }
         }
@@ -555,7 +563,7 @@ mod tests {
     #[test]
     fn test_game_propagates_known_values() {
         let mut game = Board::new("easy", easy_sudoku());
-        game.solve(0);
+        game.solve();
         for col in 1..9 {
             let cell = game.values[Board::position_of(1, col)];
             if !cell.has_known_value() {
