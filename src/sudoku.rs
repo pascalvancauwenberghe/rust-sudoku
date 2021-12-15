@@ -66,11 +66,9 @@ impl Game {
                     if experimental.board.solve() {
                         self.board.assign(&experimental.board);
                         return true;
-                    } else {
-                        if !experimental.board.contains_contradiction() {
-                            experiments.append(&mut experimental.board.generate_experiments());
-                            experiments.sort_by(|a, b| b.order().partial_cmp(&a.order()).unwrap());
-                        }
+                    } else if !experimental.board.contains_contradiction() {
+                        experiments.append(&mut experimental.board.generate_experiments());
+                        experiments.sort_by(|a, b| b.order().partial_cmp(&a.order()).unwrap());
                     }
                 }
             }
@@ -425,7 +423,7 @@ impl fmt::Display for Game {
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::new();
-        output.push_str("\n  -------------------------------------------------------------------------------------------------\n");
+        output.push_str(&format!("\n  ------------------------------------------- Level {} --------------------------------------------\n", self.depth));
         for row in Board::ALL_ROWS {
             output.push_str(" | ");
             for col in Board::ALL_COLUMNS {

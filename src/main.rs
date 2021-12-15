@@ -29,9 +29,10 @@ fn solve(name: &str, initial_values: &str, logging: bool) {
     let elapsed = now.elapsed().as_micros();
     if game.solved() {
         println!(
-            "Solution for game '{}' in {} µs:{}",
+            "Solution for game '{}' in {} µs and {} levels of guesses:{}",
             game.name(),
             elapsed,
+            game.depth(),
             game
         );
     } else {
