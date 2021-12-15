@@ -298,13 +298,13 @@ impl Board {
                 ));
             }
             self.propagate_known_values_in_all_except(
-                &value,
                 Board::all_values_in_column(value.col),
-            );
-            self.propagate_known_values_in_all_except(&value, Board::all_values_in_row(value.row));
-            self.propagate_known_values_in_all_except(
                 &value,
+            );
+            self.propagate_known_values_in_all_except(Board::all_values_in_row(value.row), &value);
+            self.propagate_known_values_in_all_except(
                 Board::all_values_in_subgrid(value.row_grid(), value.col_grid()),
+                &value,
             );
 
             self.values[Board::position_of(value.row, value.col)].has_been_propagated();
@@ -315,11 +315,11 @@ impl Board {
 
     fn propagate_known_values_in_all_except(
         &mut self,
-        square: &SquareValue,
         positions: [usize; 9],
+        except_square: &SquareValue,
     ) {
-        let known_position = Board::position_of(square.row, square.col);
-        let known_value = square.value();
+        let known_position = Board::position_of(except_square.row, except_square.col);
+        let known_value = except_square.value();
         for pos in positions.iter() {
             if *pos != known_position {
                 self.values[*pos].cant_have_value(known_value);
