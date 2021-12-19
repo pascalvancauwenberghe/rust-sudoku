@@ -18,6 +18,14 @@ pub struct Game {
     board: Board,
 }
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct NakedPair {
+    position1: usize,
+    position2: usize,
+    value1: usize,
+    value2: usize,
+}
+
 pub struct Experimental {
     pub value: usize,
     pub branching: usize,
@@ -158,6 +166,11 @@ impl Board {
         (row - 1) * 9 + (col - 1)
     }
 
+    pub fn row_of(pos: usize) -> usize { pos / 9 + 1 }
+    pub fn col_of(pos: usize) -> usize { pos % 9 + 1 }
+    pub fn rowgrid_of(pos: usize) -> usize { (pos / 9) / 3 }
+    pub fn colgrid_of(pos: usize) -> usize { (pos % 9) / 3 }
+
     pub fn possibilities(&self) -> usize {
         self.values.iter().map(|c| c.possibilities()).sum()
     }
@@ -215,6 +228,7 @@ impl Board {
         }
         // As long as we're making progress, apply our solving techniques
         let mut progress_made = true;
+        let mut pairs: Vec<NakedPair> = Vec::new();
         while progress_made {
             // Technique 1: propagate unit values to reduce possibilities in same row, column and subgrid
             progress_made = self.propagate_all_known_values();
@@ -227,13 +241,21 @@ impl Board {
                 }
                 if self.contains_contradiction() {
                     if self.logging {
-                        self.report(format!("Board results in contradiction. Backtracking. {:?}", self));
+                        self.report(format!("!! Board results in contradiction. Backtracking from level {} !!", self.depth));
                     }
                     return false;
                 }
+
+                progress_made = self.find_naked_pairs(&mut pairs);
+                if progress_made {
+                    if self.logging {
+                        self.report(format!("After cleaning up naked pairs {:?}", self));
+                    }
+                }
+
                 // Technique 2: possibilities may have been reduced so that 'singletons' can be found
                 // When a singleton is promoted to value, this value must be propagated
-                progress_made = self.promote_singletons();
+                progress_made |= self.promote_singletons();
                 if progress_made {
                     if self.logging {
                         self.report(format!("After promoting singletons {:?}", self));
@@ -384,6 +406,109 @@ impl Board {
         }
 
         promoted
+    }
+
+    fn find_naked_pairs(&mut self, pairs: &mut Vec<NakedPair>) -> bool {
+        let mut found = false;
+
+        let before = pairs.len();
+        for row in Board::ALL_ROWS {
+            found |= self.find_naked_pairs_in(Board::all_values_in_row(row), pairs);
+        }
+
+        for col in Board::ALL_COLUMNS {
+            found |= self.find_naked_pairs_in(Board::all_values_in_column(col), pairs);
+        }
+
+        for rowgrid in 0..=2 {
+            for colgrid in 0..=2 {
+                found |=
+                    self.find_naked_pairs_in(Board::all_values_in_subgrid(rowgrid, colgrid), pairs);
+            }
+        }
+
+        let after = pairs.len();
+
+        if found {
+            for i in before..after {
+                let pair = pairs[i];
+                self.report(format!(
+                    "Cleaning naked pair {} and {} at ({},{}) and ({},{}) pos: {} {}",
+                    pair.value1, pair.value2,
+                    Board::row_of(pair.position1), Board::col_of(pair.position1),
+                    Board::row_of(pair.position2), Board::col_of(pair.position2),
+                    self.values[pair.position1].possibilities(),
+                    self.values[pair.position2].possibilities()
+                ));
+                self.clean_naked_pair(pair);
+                self.clean_neighbours_of_naked_pair(pair);
+            }
+        }
+
+        return found;
+    }
+
+    fn find_naked_pairs_in(&mut self, positions: [usize; 9], pairs: &mut Vec<NakedPair>) -> bool {
+        let mut found = false;
+        for first_value in 1..9 {
+            for second_value in first_value + 1..=9 {
+                let mut matches: Vec<usize> = Vec::new();
+                let mut single = false;
+                let mut pure = true ;
+                for pos in positions.iter() {
+                    if self.values[*pos].can_have_value(first_value) && self.values[*pos].can_have_value(second_value) {
+                        matches.push(*pos);
+                        pure &= self.values[*pos].possibilities() == 2 ;
+                    } else if self.values[*pos].can_have_value(first_value) || self.values[*pos].can_have_value(second_value) {
+                        single = true;
+                    }
+                }
+                if matches.len() == 2 && (!single || pure) {
+                    let pair = NakedPair {
+                        position1: matches[0],
+                        position2: matches[1],
+                        value1: first_value,
+                        value2: second_value,
+                    };
+                    if !pairs.contains(&pair) {
+                        pairs.push(pair);
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        found
+    }
+    fn clean_naked_pair(&mut self, pair: NakedPair) {
+        for v in Board::ALL_VALUES {
+            if v != pair.value1 && v != pair.value2 {
+                self.values[pair.position1].cant_have_value(v);
+                self.values[pair.position2].cant_have_value(v);
+            }
+        }
+    }
+
+    fn clean_neighbours_of_naked_pair(&mut self, pair: NakedPair) {
+        if Board::row_of(pair.position1) == Board::row_of(pair.position2) {
+            self.clean_neighbours(pair, Board::all_values_in_row(Board::row_of(pair.position1)));
+        }
+        if Board::col_of(pair.position1) == Board::col_of(pair.position2) {
+            self.clean_neighbours(pair, Board::all_values_in_column(Board::col_of(pair.position1)));
+        }
+        if Board::colgrid_of(pair.position1) == Board::colgrid_of(pair.position2) &&
+            Board::rowgrid_of(pair.position1) == Board::rowgrid_of(pair.position2) {
+            self.clean_neighbours(pair, Board::all_values_in_subgrid(Board::rowgrid_of(pair.position1), Board::colgrid_of(pair.position1)));
+        }
+    }
+
+    fn clean_neighbours(&mut self, pair: NakedPair, positions: [usize; 9]) {
+        for pos in positions.iter() {
+            if *pos != pair.position1 && *pos != pair.position2 {
+                self.values[*pos].cant_have_value(pair.value1);
+                self.values[*pos].cant_have_value(pair.value2);
+            }
+        }
     }
 }
 
